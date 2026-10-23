@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Leo y Aprendo</title>
+<meta name="description" content="App gratis para que los niños aprendan a leer desde cero, en español e inglés. Vocales, sílabas, palabras, cuentos y juegos.">
+<meta name="theme-color" content="#ff6b6b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Leo y Aprendo">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;800&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1 id="brand"><span>L</span><span>e</span><span>o</span> <span>y</span> <span>A</span>prendo</h1>
+  <div class="row" style="gap:8px">
+    <button class="pill stars" id="starsBtn" type="button" title="Padres">⭐ <span id="starCount">0</span></button>
+    <button class="pill" id="profileBtn" type="button">🦉</button>
+    <button class="pill" id="langBtn" type="button">🌎 English</button>
+  </div>
+</header>
+<div id="audioBanner" class="banner" hidden>🔈 <span id="audioBannerText"></span><button class="pill" id="audioBannerClose" type="button">✕</button></div>
+<main id="main"></main>
+<div class="confetti" id="confetti"></div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
