@@ -881,6 +881,7 @@ Object.assign(GAME_FNS, { gameClock, gameDay });
 /* ---------- Ciencia: animales (sonido real si existe el archivo), planta, planetas ---------- */
 const Sfxfile = { index: null, load() { fetch('sonidos/index.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(j => { this.index = new Set(j || []); }).catch(() => {}); },
   has(key) { return !!(this.index && this.index.has(key)); }, play(key, onend) { if (!this.has(key)) { if (onend) onend(); return false; } Clips.play('sonidos/' + key + '.mp3', { onend }); return true; } };
+const cap = str => str.charAt(0).toUpperCase() + str.slice(1);
 function withArt(name) { if (settings.lang === 'en') return 'the ' + name; const fem = ['vaca', 'gallina', 'oveja', 'rana', 'abeja', 'ballena']; return (fem.includes(name) ? 'la ' : 'el ') + name; }
 function animalKey(a) { return a[6].replace(/\s+/g, '_'); }
 function animalSound(a, then) { // sonido real si está; si no, la voz hace la onomatopeya
@@ -897,12 +898,12 @@ function scienceScreen() { Diag.crumb('scienceScreen');
   $$('#animals .tile').forEach(b => b.onclick = () => { const a = t.animals[+b.dataset.a]; Sfx.tap(); const st = $('#stage'); st.hidden = false; award(1, 'sci:' + L + ':' + a[0]); b.classList.add('done'); const hab = t.habitats.find(h => h[0] === a[5]);
     st.innerHTML = `<div class="pic" style="font-size:6rem">${a[1]}</div><div class="word">${esc(caseIt(a[0]))}</div><div class="countrow big"><span>${hab ? hab[1] : ''}</span><span>🍽️</span></div>
       <div class="row"><button class="btn big icon" id="snd" type="button" aria-label="${esc(a[2])}">🔊</button><button class="btn alt icon" id="info" type="button">ℹ️</button></div>`;
-    const info = () => Voice.seq([fmt(s.livesIn, { a: withArt(a[0]), h: a[3] }), 500, fmt(s.eats, { a: withArt(a[0]), f: a[4] })]);
-    $('#guideText').textContent = fmt(s.animalSays, { a: withArt(a[0]), s: a[2] });
-    Voice.seq([{ t: a[0], rate: .8 }, 300], () => animalSound(a, () => Voice.seq([400, fmt(s.animalSays, { a: withArt(a[0]), s: a[2] }), 600], info)));
+    const info = () => Voice.seq([fmt(s.livesIn, { a: cap(withArt(a[0])), h: a[3] }), 500, fmt(s.eats, { a: cap(withArt(a[0])), f: a[4] })]);
+    $('#guideText').textContent = fmt(s.animalSays, { a: cap(withArt(a[0])), s: a[2] });
+    Voice.seq([{ t: a[0], rate: .8 }, 300], () => animalSound(a, () => Voice.seq([400, fmt(s.animalSays, { a: cap(withArt(a[0])), s: a[2] }), 600], info)));
     $('#snd').onclick = () => animalSound(a); $('#info').onclick = info; st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
   $$('#plant .tile').forEach(b => b.onclick = () => { const pp = t.plant[+b.dataset.p]; Sfx.tap(); award(1, 'sci:' + L + ':' + pp[0]); $('#guideText').textContent = fmt(s.partIs, { p: pp[0], d: pp[2] }); Voice.seq([fmt(s.partIs, { p: pp[0], d: pp[2] })]); });
-  $('#grow').onclick = () => { Sfx.tap(); const stages = ['🌰', '🌱', '🌿', '🌸']; const st = $('#stage'); st.hidden = false; st.innerHTML = `<div class="pic" id="gpic" style="font-size:6rem">🌰</div>`; let i = 0; const step = () => { if (!$('#gpic')) return; if (i < stages.length) { $('#gpic').textContent = stages[i]; $('#gpic').classList.add('pulse'); setTimeout(() => $('#gpic').classList.remove('pulse'), 600); i++; setTimeout(step, 1100); } }; step(); Voice.seq([s.plantGrow]); award(1, 'sci:' + L + ':grow'); st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
+  $('#grow').onclick = () => { Sfx.tap(); const stages = ['🌰', '🌱', '🌿', '🌸']; const st = $('#stage'); st.hidden = false; st.innerHTML = `<div class="pic" id="gpic" style="font-size:6rem">🌰</div>`; let i = 0; const step = () => { if (!$('#gpic')) return; if (i < stages.length) { $('#gpic').textContent = stages[i]; $('#gpic').classList.add('pulse'); setTimeout(() => { const g = $('#gpic'); if (g) g.classList.remove('pulse'); }, 600); i++; setTimeout(step, 1100); } }; step(); Voice.seq([s.plantGrow]); award(1, 'sci:' + L + ':grow'); st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
   $$('#planets .tile').forEach(b => b.onclick = () => { const pl = t.planets[+b.dataset.pl]; Sfx.tap(); award(1, 'sci:' + L + ':' + pl[0]); $('#guideText').textContent = fmt(s.planetIs, { p: pl[0], d: pl[2] }); Voice.seq([fmt(s.planetIs, { p: pl[0], d: pl[2] })]); });
   wire(); guideSay(s.science);
 }
@@ -914,7 +915,7 @@ function gameAnimalSound(focus, opts) { Diag.crumb('gameAnimalSound'); opts = op
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.hear)}</p>
       <div class="grid">${optsA.map(a => `<button class="tile keep" type="button" data-a="${esc(a[0])}" style="--cube:var(--card)"><span class="pic">${a[1]}</span>${L < 3 ? `<span class="lbl" style="color:var(--fg)">${esc(caseIt(a[0]))}</span>` : ''}</button>`).join('')}</div>`;
     bigOpts(sh.area); const hear = () => animalSound(ans); $('#hear').onclick = hear; askOnce(opts, r, s.gAnimalSound, hear);
-    $$('[data-a]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.a === ans[0]) { if (tries === 0) hit('sci:' + ans[0]); adapt('animal', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.animalSays, { a: withArt(ans[0]), s: ans[2] }), 300]); if (tries === 0) won++; } else { tries++; miss('sci:' + ans[0]); if (tries === 1) adapt('animal', false); wrong(sh, b, hear, tries, `[data-a="${ans[0]}"]`); } }); }
+    $$('[data-a]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.a === ans[0]) { if (tries === 0) hit('sci:' + ans[0]); adapt('animal', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.animalSays, { a: cap(withArt(ans[0])), s: ans[2] }), 300]); if (tries === 0) won++; } else { tries++; miss('sci:' + ans[0]); if (tries === 1) adapt('animal', false); wrong(sh, b, hear, tries, `[data-a="${ans[0]}"]`); } }); }
   $('#guideText').textContent = s.gAnimalSound; round();
 }
 function gameHabitat(focus, opts) { Diag.crumb('gameHabitat'); opts = opts || {};
@@ -925,7 +926,7 @@ function gameHabitat(focus, opts) { Diag.crumb('gameHabitat'); opts = opts || {}
     sh.area.innerHTML = `<div class="stage"><div class="pic" style="font-size:5rem">${ans[1]}</div><div class="word">${esc(caseIt(ans[0]))}</div><button class="btn big icon" id="hear" type="button">🔊</button></div>
       <div class="grid">${optsH.map(h => `<button class="tile keep" type="button" data-h="${esc(h[0])}" style="--cube:var(--card)"><span class="pic">${h[1]}</span>${L < 3 ? `<span class="lbl" style="color:var(--fg)">${esc(caseIt(h[0] === 'jardin' ? (settings.lang === 'es' ? 'jardín' : 'garden') : h[0]))}</span>` : ''}</button>`).join('')}</div>`;
     bigOpts(sh.area); const hear = () => Voice.seq([fmt(s.gHabitat, { a: withArt(ans[0]) })]); $('#hear').onclick = hear; askOnce(opts, r, fmt(s.gHabitat, { a: withArt(ans[0]) }), hear);
-    $$('[data-h]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.h === hab[0]) { if (tries === 0) hit('sci:' + ans[0]); adapt('habitat', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.livesIn, { a: withArt(ans[0]), h: ans[3] }), 300]); if (tries === 0) won++; } else { tries++; miss('sci:' + ans[0]); if (tries === 1) adapt('habitat', false); wrong(sh, b, hear, tries, `[data-h="${hab[0]}"]`); } }); }
+    $$('[data-h]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.h === hab[0]) { if (tries === 0) hit('sci:' + ans[0]); adapt('habitat', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.livesIn, { a: cap(withArt(ans[0])), h: ans[3] }), 300]); if (tries === 0) won++; } else { tries++; miss('sci:' + ans[0]); if (tries === 1) adapt('habitat', false); wrong(sh, b, hear, tries, `[data-h="${hab[0]}"]`); } }); }
   $('#guideText').textContent = fmt(s.gHabitat, { a: '…' }); round();
 }
 /* ---------- Canciones: reproduce canciones/<id>.mp3 con la letra (canciones/<id>.<lang>.json) ---------- */
