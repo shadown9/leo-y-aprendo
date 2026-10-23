@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v7';
+const APP_VERSION = 'v8';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -112,6 +112,13 @@ const Sfx = {
   bad() { this.tone(220, 0, .18, 'square', .08); this.tone(180, .16, .22, 'square', .08); },
   tap() { this.tone(520, 0, .08, 'triangle', .1); },
   star() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, i * .09, .25)); },
+  /* Varita mágica: cascada rápida de campanitas agudas que suben y brillan. k sube el tono en cada estrella recogida. */
+  sparkle(k) { const c = this.ctx(); if (!c || !settings.sfx) return; const base = 1046 * Math.pow(2, ((k || 0) % 5) / 12);
+    const notes = [1, 1.25, 1.5, 2, 2.5, 3]; // arpegio mayor en subida
+    notes.forEach((m, i) => { const t = i * .045; this.tone(base * m, t, .5, 'sine', .14); this.tone(base * m * 2, t + .01, .25, 'triangle', .035); });
+    // "brillo": un glissando agudo muy suave que sube al final
+    const o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; const now = c.currentTime + .18; o.frequency.setValueAtTime(base * 3, now); o.frequency.exponentialRampToValueAtTime(base * 6, now + .35);
+    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(.05, now + .05); g.gain.exponentialRampToValueAtTime(.001, now + .5); o.connect(g); g.connect(c.destination); o.start(now); o.stop(now + .55); },
 };
 function showBanner(text) { const b = $('#audioBanner'); $('#audioBannerText').textContent = text; b.hidden = false; }
 $('#audioBannerClose').onclick = () => { $('#audioBanner').hidden = true; };
@@ -441,7 +448,7 @@ function finish(sh, won, replay) {
 function balloons(n) {
   const layer = document.createElement('div'); layer.className = 'balloons'; document.body.appendChild(layer);
   const nums = U().numbers; let caught = 0, left = n; const target = $('#starsBtn');
-  const collect = (el) => { if (el._done) return; el._done = true; caught++; left--; Sfx.tone(700 + caught * 70, 0, .18); Sfx.tone(1100 + caught * 70, .08, .2);
+  const collect = (el) => { if (el._done) return; el._done = true; caught++; left--; Sfx.sparkle(caught);
     const r = el.getBoundingClientRect(), tr = target.getBoundingClientRect(); let m = { e: 0, f: 0 }; try { m = new DOMMatrix(getComputedStyle(el).transform); } catch (e) {}
     el.style.transform = `translate(${m.e}px, ${m.f}px)`; el.classList.add('fly');
     requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = 'transform .6s cubic-bezier(.4,0,.2,1), opacity .6s'; el.style.transform = `translate(${m.e + tr.left + tr.width / 2 - r.left - r.width / 2}px, ${m.f + tr.top + tr.height / 2 - r.top - r.height / 2}px) scale(.35)`; el.style.opacity = '.2'; }));
