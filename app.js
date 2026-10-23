@@ -15,7 +15,7 @@ const store = {
   set(k, v) { try { localStorage.setItem('lya:' + k, JSON.stringify(v)); } catch (e) {} },
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
-let settings = Object.assign({ lang: 'es', rate: 0.85, upper: false, sfx: true, voice: {} }, store.get('settings', {}));
+let settings = Object.assign({ lang: 'es', rate: 0.8, upper: false, sfx: true, voice: {} }, store.get('settings', {}));
 let profiles = store.get('profiles', []);
 let currentId = store.get('current', null);
 let P = null; // current profile
@@ -70,7 +70,20 @@ const Voice = {
       u.onstart = () => { u._started = true; };
     } catch (e) { showBanner(U().noVoice); }
   },
-  stop() { try { speechSynthesis.cancel(); } catch (e) {} },
+  stop() { this._seq++; try { speechSynthesis.cancel(); } catch (e) {} },
+  _seq: 0,
+  /* Narración con pausas: parts = ['A', 1200, {t:'avión', rate:.6}, 800, ...]. Se cancela sola al cambiar de pantalla. */
+  seq(parts, onDone) {
+    const id = ++this._seq; let i = 0;
+    const step = () => { if (id !== this._seq) return; if (i >= parts.length) { if (onDone) onDone(); return; }
+      const p = parts[i++];
+      if (typeof p === 'number') { setTimeout(step, p); return; }
+      const t = typeof p === 'string' ? p : p.t, rate = typeof p === 'string' ? undefined : p.rate;
+      if (!this.supported()) { setTimeout(step, 600); return; }
+      let ended = false; const done = () => { if (ended) return; ended = true; setTimeout(step, 120); };
+      this.say(t, { rate, onend: done }); setTimeout(done, 400 + t.length * 260); };
+    step();
+  },
 };
 const Sfx = {
   _ctx: null,
@@ -153,74 +166,103 @@ function home() {
   if (!P) { profileScreen(); return; }
   Voice.stop(); const t = T(), u = U();
   main.innerHTML = `<section class="screen">
-    <div class="mascot"><span class="owl">🦉</span><p>${esc(fmt(u.hello, { name: P.name }))}</p></div>
+    ${guideHtml(fmt(u.hello, { name: P.name }))}
     <div class="home">${u.levels.map((d, i) => `<button class="door d${i + 1}" type="button" data-go="${i}"><span class="lvstars">⭐ ${levelStars(i)}</span><span class="big">${d[2]}</span>${esc(d[0])}<small>${esc(d[1])}</small></button>`).join('')}</div>
   </section>`;
   $$('[data-go]', main).forEach(b => b.onclick = () => { Sfx.tap(); [vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen][+b.dataset.go](); });
+  if (!home._welcomed) { home._welcomed = true; guideSay(fmt(u.hello, { name: P.name }) + ' ' + S().home); } else guideSay(S().home);
 }
 
-/* ---------- 1. vowels ---------- */
-function vowelsScreen() {
-  const t = T(), u = U(); let i = 0; const L = settings.lang;
-  main.innerHTML = `<section class="screen">${topbar(u.vowelsT)}
-    <div class="chips">${t.vowels.map((v, k) => `<button class="chip" type="button" data-k="${k}">${v[0]} ${v[0].toLowerCase()}</button>`).join('')}</div>
+/* ---------- guide (búho que habla) ---------- */
+function guideHtml(text) { return `<div class="mascot"><span class="owl">🦉</span><p id="guideText">${esc(text)}</p></div>`; }
+function guideSay(text, then) { const g = $('#guideText'); if (g) g.textContent = text; Voice.seq([text, 400], then); }
+const S = () => U().say;
+
+/* ---------- 1. vowels: lección guiada paso a paso ---------- */
+function vowelsScreen(startAt) {
+  const t = T(), s = S(); let i = startAt || 0; const L = settings.lang; let waiting = false;
+  main.innerHTML = `<section class="screen">${topbar(U().vowelsT)}
+    ${guideHtml(s.vowels)}
+    <div class="chips">${t.vowels.map((v, k) => `<button class="chip" type="button" data-k="${k}" aria-label="${v[0]}">${v[0]} ${v[0].toLowerCase()}</button>`).join('')}</div>
     <div class="stage" id="stage"></div>
-    <div class="row"><button class="btn big" id="listen" type="button">🔊 ${esc(u.listen)}</button><button class="btn alt" id="slow" type="button">🐢 ${esc(u.slow)}</button><button class="btn alt" id="trace" type="button">✏️</button><button class="btn" id="next" type="button">${esc(u.next)} ▶</button></div>
+    <div class="row"><button class="btn big icon" id="listen" type="button" aria-label="${esc(U().listen)}">🔊</button><button class="btn alt icon" id="trace" type="button" aria-label="${esc(U().traceT)}">✏️</button><button class="btn icon" id="next" type="button" aria-label="${esc(U().next)}">➡️</button></div>
   </section>`;
-  function show(speak) { const v = t.vowels[i];
+  const v = () => t.vowels[i];
+  function render(stepText) {
     $$('.chip', main).forEach((c, k) => c.classList.toggle('on', k === i));
-    const w = v[1]; const hi = esc(caseIt(w)).replace(new RegExp(caseIt(v[0].toLowerCase()), 'gi'), m => `<b>${m}</b>`);
-    $('#stage').innerHTML = `<div class="letter" style="color:${vcolor(v[0])}">${v[0]} ${v[0].toLowerCase()}</div><div class="pic">${v[2]}</div><div class="word">${hi}</div><div class="sub">${v[0].toLowerCase()} · ${esc(w)}</div>`;
-    if (speak !== false) Voice.say(v[0] + '. ' + v[0] + '. ' + w); award(1, 'vowel:' + L + ':' + v[0]); }
-  $$('.chip', main).forEach(c => c.onclick = () => { i = +c.dataset.k; show(); });
-  $('#listen').onclick = () => { const v = t.vowels[i]; Voice.say(v[0] + '. ' + v[1]); };
-  $('#slow').onclick = () => { const v = t.vowels[i]; Voice.say(v[0] + '. ' + v[1], { rate: .55 }); };
-  $('#trace').onclick = () => traceScreen(t.vowels[i][0]);
-  $('#next').onclick = () => { i = (i + 1) % 5; show(); };
-  wire(); show();
+    const w = v()[1]; const hi = esc(caseIt(w)).replace(new RegExp(caseIt(v()[0].toLowerCase()), 'gi'), m => `<b>${m}</b>`);
+    $('#stage').innerHTML = `<button class="letter big-tap" id="bigL" type="button" style="color:${vcolor(v()[0])}" aria-label="${v()[0]}">${v()[0]} ${v()[0].toLowerCase()}</button><div class="pic" id="pic">${v()[2]}</div><div class="word" id="wd">${hi}</div>`;
+    $('#bigL').onclick = () => { if (waiting) tapped(); else Voice.seq([{ t: v()[0], rate: .6 }]); };
+    $('#pic').onclick = () => Voice.seq([{ t: w, rate: .7 }]);
+    $('#wd').onclick = () => Voice.seq([{ t: w, rate: .7 }]); }
+  function lesson() { waiting = false; render(); const L0 = v()[0], w = v()[1]; const pic = $('#pic'), wd = $('#wd'); pic.style.opacity = .25; wd.style.opacity = .25;
+    // 1) la letra sola, despacio, dos veces  2) la palabra de ejemplo  3) "toca la A" y espera
+    $('#guideText').textContent = fmt(s.thisIs, { L: L0 });
+    Voice.seq([fmt(s.thisIs, { L: L0 }), 700, { t: L0, rate: .55 }, 900, { t: L0, rate: .55 }, 1100], () => {
+      pic.style.opacity = 1; wd.style.opacity = 1; $('#guideText').textContent = fmt(s.ofWord, { L: L0, w });
+      Voice.seq([fmt(s.ofWord, { L: L0, w }), 900, { t: w, rate: .65 }, 1100], () => {
+        waiting = true; $('#bigL').classList.add('pulse'); $('#guideText').textContent = fmt(s.tapIt, { L: L0 }); Voice.seq([fmt(s.tapIt, { L: L0 })]);
+        // pista si no toca en 8 s
+        setTimeout(() => { if (waiting) Voice.seq([fmt(s.tapIt, { L: L0 })]); }, 8000); }); }); }
+  function tapped() { waiting = false; $('#bigL').classList.remove('pulse'); $('#bigL').classList.add('good'); Sfx.good(); confetti(); award(1, 'vowel:' + L + ':' + v()[0]);
+    $('#guideText').textContent = cheer(); Voice.seq([cheer(), 900, { t: v()[0], rate: .6 }, 1200], () => { if (i < 4) { i++; Voice.seq([s.next, 500], lesson); } else { Voice.seq([s.next], home); } }); }
+  $$('.chip', main).forEach(c => c.onclick = () => { i = +c.dataset.k; Sfx.tap(); lesson(); });
+  $('#listen').onclick = () => Voice.seq([{ t: v()[0], rate: .55 }, 900, fmt(s.ofWord, { L: v()[0], w: v()[1] })]);
+  $('#trace').onclick = () => { Voice.stop(); traceScreen(v()[0]); };
+  $('#next').onclick = () => { i = (i + 1) % 5; Sfx.tap(); lesson(); };
+  wire(); lesson();
 }
 
 /* ---------- 2. letters ---------- */
 function lettersScreen() {
   const t = T(), u = U(), L = settings.lang; const all = t.vowels.map(v => [v[0].toLowerCase(), v[1], v[2], v[0]]).concat(t.letters).sort((a, b) => a[0].localeCompare(b[0], 'es'));
-  main.innerHTML = `<section class="screen">${topbar(u.lettersT)}
-    <div class="grid" id="abc">${all.map(l => `<button class="tile ${'AEIOU'.includes(l[0].toUpperCase()) ? 'v' + l[0].toUpperCase() : ''} ${has('letter:' + L + ':' + l[0]) ? 'done' : ''}" type="button" data-l="${l[0]}">${caseIt(l[0])}</button>`).join('')}</div>
+  main.innerHTML = `<section class="screen">${topbar(u.lettersT)}${guideHtml(S().letters)}
     <div class="stage" id="stage" hidden></div>
+    <div class="grid" id="abc">${all.map(l => `<button class="tile ${'AEIOU'.includes(l[0].toUpperCase()) ? 'v' + l[0].toUpperCase() : ''} ${has('letter:' + L + ':' + l[0]) ? 'done' : ''}" type="button" data-l="${l[0]}">${caseIt(l[0])}</button>`).join('')}</div>
   </section>`;
-  $$('[data-l]', main).forEach(b => b.onclick = () => { const l = all.find(x => x[0] === b.dataset.l); const st = $('#stage'); st.hidden = false;
-    const w = l[1]; const hi = esc(caseIt(w)).replace(new RegExp('^' + caseIt(l[0]), 'i'), m => `<b>${m}</b>`);
-    st.innerHTML = `<div class="letter" ${'AEIOU'.includes(l[0].toUpperCase()) ? `style="color:${vcolor(l[0])}"` : ''}>${l[0].toUpperCase()} ${l[0]}</div><div class="pic">${l[2]}</div><div class="word">${hi}</div>
-      <div class="row"><button class="btn big" id="say" type="button">🔊</button><button class="btn alt" id="tr" type="button">✏️</button></div>`;
-    const phrase = settings.lang === 'es' ? `${l[3]}. ${w}. ${w} ${u.startsWith} ${l[3]}.` : `${l[0]}. ${w}. ${w} ${u.startsWith} ${l[0]}.`;
-    Voice.say(phrase); award(1, 'letter:' + L + ':' + l[0]); b.classList.add('done');
-    $('#say').onclick = () => Voice.say(phrase); $('#tr').onclick = () => traceScreen(l[0].toUpperCase());
-    st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
-  wire();
+  function teach(l, b) { const st = $('#stage'); st.hidden = false; const w = l[1], name = l[3], snd = (t.sounds || {})[l[0]] || l[0];
+    const hi = esc(caseIt(w)).replace(new RegExp('^' + caseIt(l[0]), 'i'), m => `<b>${m}</b>`);
+    st.innerHTML = `<button class="letter big-tap" id="bigL" type="button" ${'AEIOU'.includes(l[0].toUpperCase()) ? `style="color:${vcolor(l[0])}"` : ''}>${l[0].toUpperCase()} ${l[0]}</button><div class="pic" id="pic">${l[2]}</div><div class="word" id="wd">${hi}</div>
+      <div class="row"><button class="btn big icon" id="say" type="button" aria-label="${esc(u.listen)}">🔊</button><button class="btn alt icon" id="tr" type="button" aria-label="${esc(u.traceT)}">✏️</button></div>`;
+    // Ciencia de la lectura: primero el SONIDO (dos veces, despacio), luego el nombre, luego la palabra que empieza con él.
+    const parts = [fmt(S().letterIs, { name }), 600];
+    if (snd) parts.push({ t: snd, rate: .55 }, 700, { t: snd, rate: .55 }, 900);
+    parts.push(fmt(S().ofWord, { L: name, w }), 800, { t: w, rate: .65 });
+    $('#guideText').textContent = fmt(S().ofWord, { L: name, w }); Voice.seq(parts); award(1, 'letter:' + L + ':' + l[0]); b.classList.add('done');
+    $('#say').onclick = () => Voice.seq(parts); $('#bigL').onclick = () => Voice.seq([{ t: snd || name, rate: .55 }, 500, name]); $('#pic').onclick = () => Voice.seq([{ t: w, rate: .65 }]);
+    $('#tr').onclick = () => { Voice.stop(); traceScreen(l[0].toUpperCase()); };
+    st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  $$('[data-l]', main).forEach(b => b.onclick = () => { Sfx.tap(); teach(all.find(x => x[0] === b.dataset.l), b); });
+  wire(); guideSay(S().letters);
 }
 
 /* ---------- 3. syllables ---------- */
 function sylScreen() {
   const t = T(), u = U(), L = settings.lang; let c = t.cons[0]; const vs = ['a', 'e', 'i', 'o', 'u'];
-  main.innerHTML = `<section class="screen">${topbar(u.sylT)}
-    <p class="prompt">${esc(u.sylPrompt)}</p>
+  main.innerHTML = `<section class="screen">${topbar(u.sylT)}${guideHtml(S().syl)}
     <div class="chips" id="cons">${t.cons.map(x => `<button class="chip" type="button" data-c="${x}">${caseIt(x)}</button>`).join('')}</div>
-    <div class="grid" id="syl"></div>
     <div class="stage" id="stage" hidden></div>
+    <div class="grid" id="syl"></div>
   </section>`;
+  const snd = x => (t.sounds || {})[x] || x;
   function render() { $$('#cons .chip', main).forEach(b => b.classList.toggle('on', b.dataset.c === c));
-    $('#syl').innerHTML = vs.map((v, k) => `<button class="tile ${cls[k]}" type="button" data-s="${u.sylOf(c, v)}">${caseIt(u.sylOf(c, v))}</button>`).join('');
-    $$('[data-s]', main).forEach(b => b.onclick = () => { Voice.say(b.dataset.s, { rate: .7 }); award(1, 'syl:' + L + ':' + b.dataset.s);
-      // show a word that contains this syllable, when one exists
-      const s = b.dataset.s; const w = t.wordCats.flatMap(cat => cat[2]).find(x => x[0].startsWith(s)); const st = $('#stage');
-      if (w) { st.hidden = false; st.innerHTML = `<div class="pic">${w[1]}</div><div class="word">${esc(caseIt(w[0])).replace(new RegExp('^' + caseIt(s), 'i'), m => `<b>${m}</b>`)}</div>`; setTimeout(() => Voice.say(s + '. ' + w[0]), 900); } else st.hidden = true; }); }
-  $$('#cons .chip', main).forEach(b => b.onclick = () => { c = b.dataset.c; Voice.say(settings.lang === 'es' ? c : c, { rate: .7 }); render(); });
-  wire(); render();
+    $('#syl').innerHTML = vs.map((v, k) => `<button class="tile ${cls[k]}" type="button" data-v="${v}" data-s="${u.sylOf(c, v)}">${caseIt(u.sylOf(c, v))}</button>`).join('');
+    $$('[data-s]', main).forEach(b => b.onclick = () => { const s = b.dataset.s, v = b.dataset.v; Sfx.tap(); award(1, 'syl:' + L + ':' + s);
+      $$('[data-s]', main).forEach(x => x.classList.remove('good')); b.classList.add('good');
+      const w = t.wordCats.flatMap(cat => cat[2]).find(x => x[0].startsWith(s)); const st = $('#stage'); st.hidden = false;
+      st.innerHTML = `<div class="word" style="font-size:3rem"><span style="opacity:.5">${caseIt(c)}</span> <span style="color:var(--muted)">+</span> <span style="opacity:.5">${caseIt(v)}</span> <span style="color:var(--muted)">=</span> <b>${caseIt(s)}</b></div>${w ? `<div class="pic">${w[1]}</div><div class="word">${esc(caseIt(w[0])).replace(new RegExp('^' + caseIt(s), 'i'), m => `<b>${m}</b>`)}</div>` : ''}`;
+      // Unir sonidos (blending): consonante... vocal... sílaba, dos veces; luego la palabra.
+      const parts = [{ t: snd(c).split(',')[0], rate: .55 }, 500, { t: v, rate: .55 }, 500, { t: s, rate: .6 }, 800, { t: s, rate: .75 }];
+      if (w) parts.push(900, { t: w[0], rate: .7 });
+      $('#guideText').textContent = c + ' + ' + v + ' = ' + s; Voice.seq(parts); }); }
+  $$('#cons .chip', main).forEach(b => b.onclick = () => { c = b.dataset.c; Sfx.tap(); Voice.seq([{ t: snd(c), rate: .55 }]); render(); });
+  wire(); render(); guideSay(S().syl);
 }
 
 /* ---------- 4. words ---------- */
 function wordsScreen() {
   const t = T(), u = U(), L = settings.lang; let cat = 0;
-  main.innerHTML = `<section class="screen">${topbar(u.wordsT)}
+  main.innerHTML = `<section class="screen">${topbar(u.wordsT)}${guideHtml(S().words)}
     <div class="chips" id="cats">${t.wordCats.map((c, k) => `<button class="chip" type="button" data-k="${k}">${c[1]} ${esc(c[0])}</button>`).join('')}</div>
     <div class="stage" id="stage" hidden></div>
     <div class="grid wide" id="words"></div>
@@ -230,13 +272,16 @@ function wordsScreen() {
     $$('[data-w]', main).forEach(b => b.onclick = () => showWord(b.dataset.w, b)); }
   function showWord(word, b) { const w = t.wordCats[cat][2].find(x => x[0] === word); const syl = (t.syllabify[word] || word).split('-'); const st = $('#stage'); st.hidden = false;
     st.innerHTML = `<div class="pic">${w[1]}</div><div class="word" id="wd">${syl.map((s, i) => `<span data-i="${i}">${esc(caseIt(s))}</span>`).join('<span style="color:var(--muted)">·</span>')}</div>
-      <div class="row"><button class="btn big" id="say" type="button">🔊 ${esc(u.listen)}</button><button class="btn alt" id="bysyl" type="button">🧩 ${esc(u.bySyl)}</button></div>`;
-    Voice.say(word); award(1, 'word:' + L + ':' + word); b.classList.add('done');
-    $('#say').onclick = () => Voice.say(word);
-    $('#bysyl').onclick = () => { const spans = $$('#wd span[data-i]'); let i = 0; const step = () => { spans.forEach(s => s.style.color = ''); if (i < syl.length) { spans[i].style.color = 'var(--a)'; Voice.say(syl[i].replace(/-/g, ''), { rate: .6, onend: () => { i++; setTimeout(step, 150); } }); } else Voice.say(word); }; step(); };
+      <div class="row"><button class="btn big icon" id="say" type="button" aria-label="${esc(u.listen)}">🔊</button><button class="btn alt icon" id="bysyl" type="button" aria-label="${esc(u.bySyl)}">🧩</button></div>`;
+    award(1, 'word:' + L + ':' + word); b.classList.add('done');
+    // Palabra entera → pausa → sílaba por sílaba (resaltando) → palabra entera otra vez.
+    const spans = $$('#wd span[data-i]'); const clear = () => spans.forEach(s => s.style.color = '');
+    const bySyl = () => { let i = 0; const step = () => { clear(); if (i < syl.length) { spans[i].style.color = 'var(--a)'; const k = i; i++; Voice.seq([{ t: syl[k], rate: .55 }, 350], step); } else Voice.seq([{ t: word, rate: .8 }]); }; step(); };
+    Voice.seq([{ t: word, rate: .75 }, 900], bySyl);
+    $('#say').onclick = () => Voice.seq([{ t: word, rate: .75 }]); $('#bysyl').onclick = bySyl; $('#wd').onclick = bySyl;
     st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
-  $$('#cats .chip', main).forEach(b => b.onclick = () => { cat = +b.dataset.k; Sfx.tap(); render(); });
-  wire(); render();
+  $$('#cats .chip', main).forEach(b => b.onclick = () => { cat = +b.dataset.k; Sfx.tap(); Voice.seq([t.wordCats[cat][0]]); render(); });
+  wire(); render(); guideSay(S().words);
 }
 
 /* ---------- read-along engine (used by phrases & stories) ---------- */
@@ -258,10 +303,9 @@ function readAlong(container, text, onDone) {
 /* ---------- 5. phrases ---------- */
 function phrasesScreen() {
   const t = T(), u = U(), L = settings.lang; let i = 0;
-  main.innerHTML = `<section class="screen">${topbar(u.phrasesT)}
-    <p class="prompt">${esc(u.phrasePrompt)}</p>
+  main.innerHTML = `<section class="screen">${topbar(u.phrasesT)}${guideHtml(S().phrases)}
     <div class="stage" id="stage"></div>
-    <div class="row"><button class="btn alt" id="prev" type="button">◀</button><button class="btn big" id="read" type="button">🔊 ${esc(u.readAll)}</button><button class="btn" id="next" type="button">▶</button></div>
+    <div class="row"><button class="btn alt icon" id="prev" type="button" aria-label="${esc(u.prev)}">⬅️</button><button class="btn big icon" id="read" type="button" aria-label="${esc(u.readAll)}">🔊</button><button class="btn icon" id="next" type="button" aria-label="${esc(u.next)}">➡️</button></div>
     <div class="pager" id="pager">${t.phrases.map((p, k) => `<i data-k="${k}"></i>`).join('')}</div>
   </section>`;
   function show() { const p = t.phrases[i]; const words = p[0].split(' ');
@@ -269,42 +313,42 @@ function phrasesScreen() {
     $$('#pager i').forEach((d, k) => d.classList.toggle('on', k === i));
     $$('.w', main).forEach(b => b.onclick = () => { $$('.w', main).forEach(x => x.classList.remove('hl')); b.classList.add('hl'); Voice.say(b.dataset.w, { rate: .75, onend: () => b.classList.remove('hl') }); });
     read(); }
-  function read() { readAlong($('#sent'), t.phrases[i][0], () => award(1, 'phrase:' + L + ':' + i)); }
-  $('#read').onclick = read; $('#next').onclick = () => { i = (i + 1) % t.phrases.length; show(); }; $('#prev').onclick = () => { i = (i - 1 + t.phrases.length) % t.phrases.length; show(); };
-  wire(); show();
+  function read() { Voice.stop(); setTimeout(() => readAlong($('#sent'), t.phrases[i][0], () => award(1, 'phrase:' + L + ':' + i)), 100); }
+  $('#read').onclick = read; $('#next').onclick = () => { Sfx.tap(); i = (i + 1) % t.phrases.length; show(); }; $('#prev').onclick = () => { Sfx.tap(); i = (i - 1 + t.phrases.length) % t.phrases.length; show(); };
+  wire(); guideSay(S().phrases, show);
 }
 
 /* ---------- 6. stories ---------- */
 function storiesScreen() {
   const t = T(), u = U(), L = settings.lang;
-  main.innerHTML = `<section class="screen">${topbar(u.storiesT)}
+  main.innerHTML = `<section class="screen">${topbar(u.storiesT)}${guideHtml(S().stories)}
     <div class="grid wide">${t.stories.map((s, k) => `<button class="tile storycard ${has('story:' + L + ':' + k) ? 'done' : ''}" type="button" data-k="${k}"><span class="pic">${s.cover}</span><span class="lbl">${esc(s.title)}</span></button>`).join('')}</div>
   </section>`;
-  $$('[data-k]', main).forEach(b => b.onclick = () => storyScreen(+b.dataset.k));
-  wire();
+  $$('[data-k]', main).forEach(b => b.onclick = () => { Sfx.tap(); storyScreen(+b.dataset.k); });
+  wire(); guideSay(S().stories);
 }
 function storyScreen(k) {
   const t = T(), u = U(), L = settings.lang; const s = t.stories[k]; let pg = 0; const n = s.pages.length;
   main.innerHTML = `<section class="screen">${topbar(s.title)}
     <div class="progress"><i id="bar"></i></div>
     <div class="stage" id="stage"></div>
-    <div class="row"><button class="btn alt" id="prev" type="button">◀</button><button class="btn big" id="read" type="button">▶ 🔊</button><button class="btn" id="next" type="button">${esc(u.next)} ▶</button></div>
+    <div class="row"><button class="btn alt icon" id="prev" type="button" aria-label="${esc(u.prev)}">⬅️</button><button class="btn big icon" id="read" type="button" aria-label="${esc(u.readAll)}">🔊</button><button class="btn icon" id="next" type="button" aria-label="${esc(u.next)}">➡️</button></div>
     <div class="feedback" id="fb"></div>
   </section>`;
   function show() { $('#bar').style.width = (pg / n * 100) + '%';
     if (pg < n) { const p = s.pages[pg]; const words = p[0].split(' ');
       $('#stage').innerHTML = `<div class="pagepic">${p[1]}</div><div class="sentence" id="sent">${words.map(w => `<button class="w" type="button" data-w="${esc(w.replace(/[.,!?—"¡¿]/g, ''))}">${esc(caseIt(w))}</button>`).join('')}</div><div class="sub">${pg + 1} / ${n}</div>`;
       $$('.w', main).forEach(b => b.onclick = () => { Voice.say(b.dataset.w, { rate: .75 }); });
-      $('#next').textContent = u.next + ' ▶'; read(); }
+      $('#next').textContent = '➡️'; read(); }
     else quiz(); }
-  function read() { if (pg < n) readAlong($('#sent'), s.pages[pg][0]); }
+  function read() { if (pg < n) { Voice.stop(); setTimeout(() => readAlong($('#sent'), s.pages[pg][0], () => { if (pg === n - 1) return; setTimeout(() => { $('#next').classList.add('pulse'); }, 600); }), 100); } }
   function quiz() { const q = s.q; const opts = q[1].map((o, i) => [o, i]);
     $('#stage').innerHTML = `<div class="sub">${esc(u.question)}</div><div class="word" style="font-size:1.5rem;letter-spacing:0">${esc(q[0])}</div>
       <div class="grid" style="width:100%">${shuffle(opts).map(o => `<button class="tile" type="button" data-i="${o[1]}"><span class="pic">${o[0][1]}</span><span class="lbl">${esc(o[0][0])}</span></button>`).join('')}</div>`;
-    Voice.say(q[0]); $('#next').textContent = u.home;
-    $$('[data-i]', main).forEach(b => b.onclick = () => { if (+b.dataset.i === q[2]) { b.classList.add('good'); Sfx.good(); confetti(); $('#fb').textContent = u.theEnd; Voice.say(cheer()); award(3, 'story:' + L + ':' + k); $('#next').onclick = home; } else { b.classList.add('bad'); Sfx.bad(); $('#fb').textContent = u.bad; setTimeout(() => b.classList.remove('bad'), 400); } }); }
-  $('#read').onclick = read; $('#next').onclick = () => { if (pg < n) { pg++; show(); } else home(); }; $('#prev').onclick = () => { if (pg > 0) { pg--; show(); } };
-  wire(); show();
+    Voice.seq([q[0], 900, q[0]]); $('#next').textContent = '🏠';
+    $$('[data-i]', main).forEach(b => b.onclick = () => { if (+b.dataset.i === q[2]) { b.classList.add('good'); Sfx.good(); confetti(); $('#fb').textContent = u.theEnd; Voice.say(cheer()); award(3, 'story:' + L + ':' + k); $('#next').onclick = home; } else { b.classList.add('bad'); Sfx.bad(); $('#fb').textContent = u.bad; setTimeout(() => b.classList.remove('bad'), 400); const ok = $$('[data-i]', main).find(x => +x.dataset.i === q[2]); Voice.seq([u.bad, 600, q[0]]); setTimeout(() => ok.classList.add('pulse'), 1500); } }); }
+  $('#read').onclick = read; $('#next').onclick = () => { Sfx.tap(); $('#next').classList.remove('pulse'); if (pg < n) { pg++; show(); } else home(); }; $('#prev').onclick = () => { Sfx.tap(); if (pg > 0) { pg--; show(); } };
+  wire(); Voice.seq([s.title, 700], show);
 }
 
 /* ---------- 7. trace ---------- */
@@ -313,10 +357,11 @@ function traceScreen(startLetter) {
   let L = startLetter || letters[0], upper = true;
   main.innerHTML = `<section class="screen">${topbar(u.traceT)}
     <div class="chips" style="overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start;padding:4px 2px" id="lchips">${letters.map(l => `<button class="chip ${has('trace:' + l) ? 'on' : ''}" type="button" data-l="${l}">${l}</button>`).join('')}</div>
-    <div class="tracewrap"><p class="prompt">${esc(u.tracePrompt)}</p>
+    ${guideHtml(S().trace)}
+    <div class="tracewrap">
       <div class="row"><button class="chip" id="caseU" type="button">${esc(u.upper)}</button><button class="chip" id="caseL" type="button">${esc(u.lower)}</button></div>
       <canvas class="trace" id="cv" width="600" height="600"></canvas>
-      <div class="row"><button class="btn alt" id="clear" type="button">🧽 ${esc(u.clear)}</button><button class="btn big" id="say" type="button">🔊</button><button class="btn good" id="done" type="button">✅ ${esc(u.ready)}</button></div>
+      <div class="row"><button class="btn alt icon" id="clear" type="button" aria-label="${esc(u.clear)}">🧽</button><button class="btn big icon" id="say" type="button" aria-label="${esc(u.listen)}">🔊</button><button class="btn good icon" id="done" type="button" aria-label="${esc(u.ready)}">✅</button></div>
       <div class="feedback" id="fb"></div></div>
   </section>`;
   const cv = $('#cv'), ctx = cv.getContext('2d'); const guide = document.createElement('canvas'); guide.width = guide.height = 600; const gctx = guide.getContext('2d');
@@ -337,43 +382,46 @@ function traceScreen(startLetter) {
       if (g[i] > 128) { tot++; if (ink) hit++; } else if (ink) outside++; }
     return { cov: tot ? hit / tot : 0, outside: inkTotal ? outside / inkTotal : 0 }; }
   $('#done').onclick = () => { const r = coverage();
-    if (r.cov > .35 && r.outside < .6) { $('#fb').textContent = cheer(); Sfx.good(); confetti(); Voice.say(L + '. ' + cheer()); award(2, 'trace:' + L); $$('#lchips .chip').find(b => b.dataset.l === L); }
-    else { $('#fb').textContent = u.bad; Sfx.bad(); } };
+    if (r.cov > .35 && r.outside < .6) { $('#fb').textContent = cheer(); Sfx.good(); confetti(); Voice.seq([cheer(), 600, { t: L, rate: .6 }]); award(2, 'trace:' + L); }
+    else { $('#fb').textContent = u.bad; Sfx.bad(); Voice.seq([u.bad, 500, S().trace]); } };
   $('#clear').onclick = () => { Sfx.tap(); draw(); }; $('#say').onclick = () => Voice.say(L);
   $('#caseU').onclick = () => { upper = true; draw(); }; $('#caseL').onclick = () => { upper = false; draw(); };
-  $$('#lchips .chip').forEach(b => b.onclick = () => { L = b.dataset.l; Voice.say(L); draw(); });
-  wire(); draw(); document.fonts && document.fonts.ready.then(draw);
+  $$('#lchips .chip').forEach(b => b.onclick = () => { L = b.dataset.l; Sfx.tap(); Voice.seq([{ t: L, rate: .6 }]); draw(); });
+  wire(); draw(); document.fonts && document.fonts.ready.then(draw); Voice.seq([S().trace, 500, { t: L, rate: .6 }]);
 }
 
 /* ---------- 8. games ---------- */
 function gamesScreen() {
   const u = U();
   main.innerHTML = `<section class="screen">${topbar(u.gamesT)}
+    ${guideHtml(S().games)}
     <div class="home">${u.games.map((g, i) => `<button class="door d${(i % 8) + 1}" type="button" data-g="${i}"><span class="big">${g[2]}</span>${esc(g[0])}<small>${esc(g[1])}</small></button>`).join('')}</div></section>`;
   $$('[data-g]', main).forEach(b => b.onclick = () => { Sfx.tap(); [gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing][+b.dataset.g](); });
-  wire();
+  wire(); guideSay(S().games);
 }
 function roundShell(title, n) {
-  main.innerHTML = `<section class="screen">${topbar(title)}<div class="progress"><i id="bar"></i></div><div id="area"></div><div class="feedback" id="fb"></div></section>`; wire();
+  main.innerHTML = `<section class="screen">${topbar(title)}${guideHtml(title)}<div class="progress"><i id="bar"></i></div><div id="area"></div><div class="feedback" id="fb"></div></section>`; wire();
   return { area: $('#area'), fb: $('#fb'), bar: $('#bar'), n };
 }
 function finish(sh, won, replay) {
   sh.bar.style.width = '100%'; P.games = (P.games || 0) + 1; saveProfiles(); mark('game:' + settings.lang + ':' + (P.games)); checkBadges();
   sh.area.innerHTML = `<div class="stage"><div class="pic">🏆</div><div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(U().done, { n: won }))}</div>
-    <div class="row"><button class="btn big" id="again" type="button">🔁 ${esc(U().again)}</button><button class="btn alt" id="hm" type="button">🏠 ${esc(U().home)}</button></div></div>`;
-  sh.fb.textContent = ''; confetti(); Voice.say(fmt(U().done, { n: won })); $('#hm').onclick = home; $('#again').onclick = replay;
+    <div class="row"><button class="btn big icon" id="again" type="button" aria-label="${esc(U().again)}">🔁</button><button class="btn alt icon" id="hm" type="button" aria-label="${esc(U().home)}">🏠</button></div></div>`;
+  sh.fb.textContent = ''; confetti(); Voice.seq([fmt(U().done, { n: won })]); $('#hm').onclick = home; $('#again').onclick = replay;
 }
-function correct(sh, b, n, after) { b.classList.add('good'); Sfx.good(); sh.fb.textContent = cheer(); if (n) award(n); confetti(); setTimeout(after, 1300); }
-function wrong(sh, b, retry) { b.classList.add('bad'); Sfx.bad(); sh.fb.textContent = U().bad; setTimeout(() => b.classList.remove('bad'), 400); if (retry) setTimeout(retry, 500); }
+function correct(sh, b, n, after) { b.classList.add('good'); Sfx.good(); sh.fb.textContent = cheer(); if (n) award(n); confetti(); setTimeout(() => { if (document.contains(sh.area)) after(); }, 1300); }
+function wrong(sh, b, retry, tries, okSel) { b.classList.add('bad'); Sfx.bad(); sh.fb.textContent = U().bad; setTimeout(() => b.classList.remove('bad'), 400);
+  if (tries >= 2 && okSel) { const ok = sh.area.querySelector(okSel); if (ok) { ok.classList.add('pulse'); Voice.seq([U().bad, 500, S().hint]); return; } }
+  if (retry) setTimeout(retry, 500); }
 function gameVowel() {
   const t = T(), u = U(); const sh = roundShell(u.games[0][0], 6); let r = 0, won = 0;
   function round() { if (r === sh.n) { finish(sh, won, gameVowel); return; }
     sh.bar.style.width = (r / sh.n * 100) + '%'; const k = Math.floor(Math.random() * 5), v = t.vowels[k]; let tries = 0;
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.hear)}</p>
       <div class="grid">${t.vowels.map((x, i) => `<button class="tile ${cls[i]}" type="button" data-i="${i}">${caseIt(x[0].toLowerCase())}</button>`).join('')}</div>`;
-    const hear = () => Voice.say(v[0] + '. ' + v[0] + '. ' + v[1]); $('#hear').onclick = hear; setTimeout(hear, 300);
-    $$('[data-i]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.i === k) { Voice.say(cheer()); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; wrong(sh, b, hear); } }); }
-  round();
+    const hear = () => Voice.seq([{ t: v[0], rate: .55 }, 700, { t: v[0], rate: .55 }]); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gVowel, 600], hear); else setTimeout(hear, 300);
+    $$('[data-i]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.i === k) { Voice.seq([cheer()]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; wrong(sh, b, hear, tries, `[data-i="${k}"]`); } }); }
+  $('#guideText').textContent = S().gVowel; round();
 }
 function gameWord() {
   const t = T(), u = U(); const all = t.wordCats.flatMap(c => c[2]); const sh = roundShell(u.games[1][0], 6); let r = 0, won = 0;
@@ -381,9 +429,9 @@ function gameWord() {
     sh.bar.style.width = (r / sh.n * 100) + '%'; const opts = pick(all, 3), ans = opts[Math.floor(Math.random() * 3)]; let tries = 0;
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.hear)}</p>
       <div class="grid wide">${opts.map(w => `<button class="tile" type="button" data-w="${esc(w[0])}"><span class="pic">${w[1]}</span></button>`).join('')}</div>`;
-    const hear = () => Voice.say(ans[0]); $('#hear').onclick = hear; setTimeout(hear, 300);
-    $$('[data-w]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.w === ans[0]) { b.innerHTML += `<span class="lbl">${esc(caseIt(ans[0]))}</span>`; Voice.say(ans[0] + '. ' + cheer()); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; wrong(sh, b, hear); } }); }
-  round();
+    const hear = () => Voice.seq([{ t: ans[0], rate: .7 }]); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gWord, 600], hear); else setTimeout(hear, 300);
+    $$('[data-w]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.w === ans[0]) { b.innerHTML += `<span class="lbl">${esc(caseIt(ans[0]))}</span>`; Voice.seq([ans[0], 400, cheer()]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; wrong(sh, b, hear, tries, `[data-w="${ans[0].replace(/"/g, '')}"]`); } }); }
+  $('#guideText').textContent = S().gWord; round();
 }
 function gameBuild() {
   const t = T(), u = U(); const sh = roundShell(u.games[2][0], 6); let r = 0, won = 0; const items = pick(t.build, 6);
@@ -393,13 +441,13 @@ function gameBuild() {
     sh.area.innerHTML = `<div class="stage"><div class="pic">${pic}</div><button class="btn" id="hear" type="button">🔊 ${esc(u.listen)}</button>
       <div class="slots">${parts.map(() => `<div class="slot"></div>`).join('')}</div>
       <div class="pieces">${order.map(i => `<button class="piece" type="button" data-i="${i}">${esc(caseIt(parts[i]))}</button>`).join('')}</div></div>`;
-    const hear = () => Voice.say(settings.lang === 'es' ? parts.join(', ') + '. ' + word : word, { rate: .75 }); $('#hear').onclick = hear; setTimeout(hear, 300);
+    const hear = () => Voice.seq([{ t: word, rate: .7 }, 600].concat(parts.flatMap(p => [{ t: p, rate: .55 }, 350]), [{ t: word, rate: .8 }])); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gBuild, 600], hear); else setTimeout(hear, 300);
     const slots = $$('.slot', sh.area);
     $$('.piece', sh.area).forEach(b => b.onclick = () => { const i = +b.dataset.i;
       if (i === placed.length) { b.disabled = true; slots[i].textContent = caseIt(parts[i]); slots[i].classList.add('full'); placed.push(i); Voice.say(parts[i], { rate: .7 }); Sfx.tap();
-        if (placed.length === parts.length) { sh.fb.textContent = cheer(); Sfx.good(); setTimeout(() => Voice.say(word + '. ' + cheer()), 400); if (!bad) { award(2); won += 2; } confetti(); setTimeout(() => { r++; round(); }, 1600); } }
-      else { bad = true; wrong(sh, b); } }); }
-  round();
+        if (placed.length === parts.length) { sh.fb.textContent = cheer(); Sfx.good(); setTimeout(() => Voice.say(word + '. ' + cheer()), 400); if (!bad) { award(2); won += 2; } confetti(); setTimeout(() => { if (document.contains(sh.area)) { r++; round(); } }, 1600); } }
+      else { bad = true; wrong(sh, b, null, 2, `.piece[data-i="${placed.length}"]`); } }); }
+  $('#guideText').textContent = S().gBuild; round();
 }
 function gameFirst() {
   const t = T(), u = U(); const all = t.letters.concat(t.vowels.map(v => [v[0].toLowerCase(), v[1], v[2], v[0]])); const sh = roundShell(u.games[3][0], 6); let r = 0, won = 0;
@@ -408,19 +456,20 @@ function gameFirst() {
     const opts = shuffle([ans].concat(pick(all.filter(x => x[0] !== ans[0]), 2)));
     sh.area.innerHTML = `<div class="stage"><div class="pic">${ans[2]}</div><div class="word">${esc(caseIt(ans[1]))}</div><button class="btn" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.games[3][0])}</p>
       <div class="grid">${opts.map(o => `<button class="tile" type="button" data-l="${o[0]}">${caseIt(o[0])}</button>`).join('')}</div>`;
-    const hear = () => Voice.say(ans[1]); $('#hear').onclick = hear; setTimeout(hear, 300);
-    $$('[data-l]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.l === ans[0]) { Voice.say(ans[1] + '. ' + cheer()); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; wrong(sh, b, hear); } }); }
-  round();
+    const hear = () => Voice.seq([{ t: ans[1], rate: .65 }, 500, { t: ans[1], rate: .55 }]); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gFirst, 600], hear); else setTimeout(hear, 300);
+    $$('[data-l]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.l === ans[0]) { Voice.seq([ans[1], 400, cheer()]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; wrong(sh, b, hear, tries, `[data-l="${ans[0]}"]`); } }); }
+  $('#guideText').textContent = S().gFirst; round();
 }
 function gameMemory() {
   const t = T(), u = U(); const all = t.wordCats.flatMap(c => c[2]).filter(w => w[0].length <= 6); const sh = roundShell(u.games[4][0], 1); let won = 0;
   const pairs = pick(all, 4); const cards = shuffle(pairs.flatMap((w, i) => [{ k: i, kind: 'pic', v: w[1], w: w[0] }, { k: i, kind: 'txt', v: caseIt(w[0]), w: w[0] }]));
   let open = [], matched = 0, lock = false;
-  sh.area.innerHTML = `<p class="prompt">${esc(u.games[4][1])}</p><div class="memo">${cards.map((c, i) => `<button class="tile face" type="button" data-i="${i}">❔</button>`).join('')}</div>`;
+  $('#guideText').textContent = S().gMemory; Voice.seq([S().gMemory]);
+  sh.area.innerHTML = `<div class="memo">${cards.map((c, i) => `<button class="tile face" type="button" data-i="${i}">❔</button>`).join('')}</div>`;
   $$('[data-i]', sh.area).forEach(b => b.onclick = () => { const i = +b.dataset.i, c = cards[i]; if (lock || open.includes(i) || b.classList.contains('matched')) return;
-    b.classList.remove('face'); b.innerHTML = c.kind === 'pic' ? `<span class="pic">${c.v}</span>` : `<span class="lbl">${esc(c.v)}</span>`; Voice.say(c.w, { rate: .8 }); open.push(i);
+    b.classList.remove('face'); b.innerHTML = c.kind === 'pic' ? `<span class="pic">${c.v}</span>` : `<span class="lbl">${esc(c.v)}</span>`; Voice.seq([{ t: c.w, rate: .75 }]); open.push(i);
     if (open.length === 2) { lock = true; const [a, bI] = open; const A = $$('[data-i]', sh.area)[a], B = $$('[data-i]', sh.area)[bI];
-      if (cards[a].k === cards[bI].k) { setTimeout(() => { A.classList.add('matched'); B.classList.add('matched'); Sfx.good(); matched++; award(1); won++; open = []; lock = false; sh.bar.style.width = (matched / 4 * 100) + '%'; if (matched === 4) setTimeout(() => finish(sh, won, gameMemory), 600); }, 400); }
+      if (cards[a].k === cards[bI].k) { setTimeout(() => { A.classList.add('matched'); B.classList.add('matched'); Sfx.good(); matched++; award(1); won++; open = []; lock = false; sh.bar.style.width = (matched / 4 * 100) + '%'; if (matched === 4) setTimeout(() => { if (document.contains(sh.area)) finish(sh, won, gameMemory); }, 600); }, 400); }
       else setTimeout(() => { [A, B].forEach(x => { x.classList.add('face'); x.innerHTML = '❔'; }); Sfx.bad(); open = []; lock = false; }, 900); } });
 }
 function gameMissing() {
@@ -430,9 +479,9 @@ function gameMissing() {
     const shown = word.split('').map((ch, i) => i === idx ? `<span id="gap" style="color:var(--a);border-bottom:4px solid var(--a)">&nbsp;&nbsp;</span>` : esc(caseIt(ch))).join('');
     sh.area.innerHTML = `<div class="stage"><div class="pic">${pic}</div><div class="word" id="wd">${shown}</div><button class="btn" id="hear" type="button">🔊</button></div>
       <div class="grid">${['a', 'e', 'i', 'o', 'u'].map((v, i) => `<button class="tile ${cls[i]}" type="button" data-v="${v}">${caseIt(v)}</button>`).join('')}</div>`;
-    const hear = () => Voice.say(word); $('#hear').onclick = hear; setTimeout(hear, 300);
-    $$('[data-v]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.v === ans) { $('#gap').textContent = caseIt(ans); $('#gap').style.borderBottom = 'none'; Voice.say(word + '. ' + cheer()); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; wrong(sh, b, hear); } }); }
-  round();
+    const hear = () => Voice.seq([{ t: word, rate: .6 }, 500, { t: word, rate: .75 }]); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gMissing, 600], hear); else setTimeout(hear, 300);
+    $$('[data-v]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.v === ans) { $('#gap').textContent = caseIt(ans); $('#gap').style.borderBottom = 'none'; Voice.seq([word, 400, cheer()]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; wrong(sh, b, hear, tries, `[data-v="${ans}"]`); } }); }
+  $('#guideText').textContent = S().gMissing; round();
 }
 
 /* ---------- parents ---------- */
