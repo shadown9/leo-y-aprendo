@@ -233,6 +233,10 @@ canvas.trace{max-width:min(92vw,520px)}
 .countrow .op{font-family:var(--display);font-weight:700;font-size:2.4rem;color:var(--o);padding:0 6px;align-self:center}
 .countrow span.gone{opacity:.35;position:relative}
 .countrow span.gone::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:6px;background:var(--bad);transform:rotate(-20deg);border-radius:3px}
+/* canciones */
+.lyrics{max-height:40vh;overflow:auto;width:100%;padding:6px 0}
+.lyrics .line{font-family:var(--display);font-size:1.3rem;margin:4px 0;padding:6px 10px;border-radius:12px;transition:background .2s}
+.lyrics .line.hl{background:var(--e);color:#2b2340}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
 .confetti i{position:absolute;top:-20px;width:12px;height:12px;border-radius:3px;animation:fall 1.3s linear forwards}
