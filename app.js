@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v11';
+const APP_VERSION = 'v12';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -467,6 +467,12 @@ function balloons(n) {
   layer.querySelectorAll('.balloon').forEach(el => el.addEventListener('animationend', () => collect(el)));
   setTimeout(() => { if (document.contains(layer)) layer.querySelectorAll('.balloon').forEach((el, i) => setTimeout(() => collect(el), i * 250)); }, 22000);
 }
+/* Cubos grandes: las opciones de los juegos llenan la pantalla y cada una tiene su color. */
+const CUBE_COLORS = ['var(--a)', 'var(--e)', 'var(--i)', 'var(--o)', 'var(--u)', '#ff8e53'];
+function bigOpts(area) { const g = area.querySelector('.grid'); if (!g) return; const tiles = $$('.tile', g); const n = tiles.length; if (!n) return;
+  g.classList.add('cubes'); const cols = n <= 3 ? 1 : 2; const rows = Math.ceil(n / cols); g.style.setProperty('--cols', cols);
+  const top = g.getBoundingClientRect().top; const avail = Math.max(0, window.innerHeight - top - 70); const h = Math.max(104, Math.min(240, avail / rows - 14)); g.style.setProperty('--h', h + 'px');
+  tiles.forEach((t, i) => { const v = (t.className.match(/\bv([AEIOU])\b/) || [])[1]; t.style.setProperty('--cube', v ? 'var(--' + v.toLowerCase() + ')' : CUBE_COLORS[i % CUBE_COLORS.length]); t.style.animationDelay = (i * .07) + 's'; }); }
 function correct(sh, b, n, after, parts) { b.classList.add('good'); Sfx.good(); const c = cheer(); sh.fb.textContent = c; if (n) award(n, null, true); confetti();
   // Avanza cuando la voz TERMINA de felicitar, nunca por reloj (si no, la ronda siguiente corta la frase).
   armWatchdog('correct'); sh.area.style.pointerEvents = 'none'; // un toque extra no debe cancelar la felicitación ni trabar la ronda
@@ -494,7 +500,7 @@ function gameVowel(focus, opts) { Diag.crumb('gameVowel'); opts = opts || {};
     const idx = L === 1 ? shuffle([k].concat(pick([0, 1, 2, 3, 4].filter(i => i !== k), 2))) : [0, 1, 2, 3, 4];
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.hear)}</p>
       <div class="grid">${idx.map(i => `<button class="tile ${cls[i]}" type="button" data-i="${i}">${L === 3 ? (Math.random() < .5 ? t.vowels[i][0] : t.vowels[i][0].toLowerCase()) : caseIt(t.vowels[i][0].toLowerCase())}</button>`).join('')}</div>`;
-    const hear = () => Voice.seq([{ t: v[0], rate: .55 }, 700, { t: v[0], rate: .55 }]); $('#hear').onclick = hear; askOnce(opts, r, S().gVowel, hear);
+    bigOpts(sh.area); const hear = () => Voice.seq([{ t: v[0], rate: .55 }, 700, { t: v[0], rate: .55 }]); $('#hear').onclick = hear; askOnce(opts, r, S().gVowel, hear);
     $$('[data-i]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.i === k) { if (tries === 0) hit('vowel:' + v[0]); adapt('vowel', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: v[0], rate: .6 }, 300]); if (tries === 0) won++; } else { tries++; miss('vowel:' + v[0]); if (tries === 1) adapt('vowel', false); wrong(sh, b, hear, tries, `[data-i="${k}"]`); } }); }
   $('#guideText').textContent = S().gVowel; round();
 }
@@ -508,7 +514,7 @@ function gameWord(focus, opts) { Diag.crumb('gameWord'); opts = opts || {};
     const opts3 = shuffle([ans].concat(L === 3 ? others.slice(0, nOpts - 1) : pick(others, nOpts - 1))); firstSeen('word:' + ans[0]);
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.hear)}</p>
       <div class="grid ${nOpts > 4 ? '' : 'wide'}">${opts3.map(w => `<button class="tile" type="button" data-w="${esc(w[0])}"><span class="pic">${w[1]}</span></button>`).join('')}</div>`;
-    const hear = () => Voice.seq([{ t: ans[0], rate: .7 }]); $('#hear').onclick = hear; askOnce(opts, r, S().gWord, hear);
+    bigOpts(sh.area); const hear = () => Voice.seq([{ t: ans[0], rate: .7 }]); $('#hear').onclick = hear; askOnce(opts, r, S().gWord, hear);
     $$('[data-w]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.w === ans[0]) { b.innerHTML += `<span class="lbl">${esc(caseIt(ans[0]))}</span>`; if (tries === 0) hit('word:' + ans[0]); adapt('word', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: ans[0], rate: .7 }, 400]); if (tries === 0) won++; } else { tries++; miss('word:' + ans[0]); if (tries === 1) adapt('word', false); wrong(sh, b, hear, tries, `[data-w="${ans[0].replace(/"/g, '')}"]`); } }); }
   $('#guideText').textContent = S().gWord; round();
 }
@@ -543,7 +549,7 @@ function gameFirst(focus, opts) { Diag.crumb('gameFirst'); opts = opts || {};
     const opts3 = shuffle([ans].concat(pick(all.filter(x => x[0] !== ans[0]), nOpts - 1)));
     sh.area.innerHTML = `<div class="stage"><div class="pic">${ans[2]}</div>${L < 3 ? `<div class="word">${esc(caseIt(ans[1]))}</div>` : ''}<button class="btn big icon" id="hear" type="button">🔊</button></div>
       <div class="grid">${opts3.map(o => `<button class="tile" type="button" data-l="${o[0]}">${caseIt(o[0])}</button>`).join('')}</div>`;
-    const hear = () => Voice.seq([{ t: ans[1], rate: .65 }, 500, { t: ans[1], rate: .55 }]); $('#hear').onclick = hear; askOnce(opts, r, S().gFirst, hear);
+    bigOpts(sh.area); const hear = () => Voice.seq([{ t: ans[1], rate: .65 }, 500, { t: ans[1], rate: .55 }]); $('#hear').onclick = hear; askOnce(opts, r, S().gFirst, hear);
     $$('[data-l]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.l === ans[0]) { if (tries === 0) hit('letter:' + ans[0]); adapt('first', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: ans[1], rate: .7 }, 400]); if (tries === 0) won++; } else { tries++; miss('letter:' + ans[0]); if (tries === 1) adapt('first', false); wrong(sh, b, hear, tries, `[data-l="${ans[0]}"]`); } }); }
   $('#guideText').textContent = S().gFirst; round();
 }
@@ -552,7 +558,7 @@ function gameMemory() { Diag.crumb('gameMemory');
   const pairs = pick(all, 4); const cards = shuffle(pairs.flatMap((w, i) => [{ k: i, kind: 'pic', v: w[1], w: w[0] }, { k: i, kind: 'txt', v: caseIt(w[0]), w: w[0] }]));
   let open = [], matched = 0, lock = false;
   $('#guideText').textContent = S().gMemory; Voice.seq([S().gMemory]);
-  sh.area.innerHTML = `<div class="memo">${cards.map((c, i) => `<button class="tile face" type="button" data-i="${i}">❔</button>`).join('')}</div>`;
+  sh.area.innerHTML = `<div class="memo">${cards.map((c, i) => `<button class="tile face" type="button" data-i="${i}">❔</button>`).join('')}</div>`; bigOpts(sh.area);
   $$('[data-i]', sh.area).forEach(b => b.onclick = () => { const i = +b.dataset.i, c = cards[i]; if (lock || open.includes(i) || b.classList.contains('matched')) return;
     b.classList.remove('face'); b.innerHTML = c.kind === 'pic' ? `<span class="pic">${c.v}</span>` : `<span class="lbl">${esc(c.v)}</span>`; Voice.seq([{ t: c.w, rate: .75 }]); open.push(i);
     if (open.length === 2) { lock = true; const [a, bI] = open; const A = $$('[data-i]', sh.area)[a], B = $$('[data-i]', sh.area)[bI];
@@ -568,7 +574,7 @@ function gameMissing(focus, opts) { Diag.crumb('gameMissing'); opts = opts || {}
     const vs = nOpts === 5 ? ['a', 'e', 'i', 'o', 'u'] : shuffle([ans].concat(pick(['a', 'e', 'i', 'o', 'u'].filter(v => v !== ans), 2)));
     sh.area.innerHTML = `<div class="stage"><div class="pic">${pic}</div><div class="word" id="wd">${shown}</div><button class="btn big icon" id="hear" type="button">🔊</button></div>
       <div class="grid">${vs.map(v => `<button class="tile ${cls['aeiou'.indexOf(v)]}" type="button" data-v="${v}">${caseIt(v)}</button>`).join('')}</div>`;
-    const hear = () => Voice.seq([{ t: word, rate: .6 }, 500, { t: word, rate: .75 }]); $('#hear').onclick = hear; askOnce(opts, r, S().gMissing, hear);
+    bigOpts(sh.area); const hear = () => Voice.seq([{ t: word, rate: .6 }, 500, { t: word, rate: .75 }]); $('#hear').onclick = hear; askOnce(opts, r, S().gMissing, hear);
     $$('[data-v]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.v === ans) { $('#gap').textContent = caseIt(ans); $('#gap').style.borderBottom = 'none'; if (tries === 0) hit('missing:' + word); adapt('missing', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: word, rate: .7 }, 400]); if (tries === 0) won++; } else { tries++; miss('missing:' + word); if (tries === 1) adapt('missing', false); wrong(sh, b, hear, tries, `[data-v="${ans}"]`); } }); }
   $('#guideText').textContent = S().gMissing; round();
 }
@@ -582,7 +588,7 @@ function gameRhyme(focus, opts) { Diag.crumb('gameRhyme'); opts = opts || {};
     sh.area.innerHTML = `<div class="stage"><div class="pic">${target[1]}</div><div class="word">${esc(caseIt(target[0]))}</div><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(fmt(S().rhymeQ, { w: target[0] }))}</p>
       <div class="grid wide">${opts3.map(w => `<button class="tile" type="button" data-w="${esc(w[0])}"><span class="pic">${w[1]}</span><span class="lbl">${esc(caseIt(w[0]))}</span></button>`).join('')}</div>`;
     // Se escuchan TODAS las opciones: el niño compara sonidos, no lee.
-    const hear = () => Voice.seq([{ t: target[0], rate: .7 }, 500, fmt(S().rhymeQ, { w: target[0] }), 500].concat(opts3.flatMap(w => [{ t: w[0], rate: .7 }, 450]))); $('#hear').onclick = hear; askOnce(opts, r, S().gRhyme, hear);
+    bigOpts(sh.area); const hear = () => Voice.seq([{ t: target[0], rate: .7 }, 500, fmt(S().rhymeQ, { w: target[0] }), 500].concat(opts3.flatMap(w => [{ t: w[0], rate: .7 }, 450]))); $('#hear').onclick = hear; askOnce(opts, r, S().gRhyme, hear);
     $$('[data-w]', sh.area).forEach(b => { b.onclick = () => { if (b.dataset.w === ans[0]) { if (tries === 0) hit('rhyme:' + target[0]); adapt('rhyme', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: target[0], rate: .7 }, 250, { t: ans[0], rate: .7 }, 300, S().theyRhyme, 300]); if (tries === 0) won++; } else { tries++; miss('rhyme:' + target[0]); if (tries === 1) adapt('rhyme', false); Voice.seq([{ t: target[0], rate: .7 }, 200, { t: b.dataset.w, rate: .7 }, 300, S().noRhyme]); wrong(sh, b, null, tries, `[data-w="${ans[0]}"]`); } }; }); }
   $('#guideText').textContent = S().gRhyme; round();
 }
@@ -614,7 +620,7 @@ function gameOdd(focus, opts) { Diag.crumb('gameOdd'); opts = opts || {};
     sh.bar.style.width = (r / sh.n * 100) + '%'; const f = groups[Math.floor(Math.random() * groups.length)]; const same = pick(byFirst[f], 2); const odd = pick(all.filter(w => w[0][0] !== f), 1)[0]; const opts3 = shuffle(same.concat([odd])); let tries = 0; firstSeen('odd:' + odd[0]);
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(S().gOdd)}</p>
       <div class="grid wide">${opts3.map(w => `<button class="tile" type="button" data-w="${esc(w[0])}"><span class="pic">${w[1]}</span><span class="lbl">${esc(caseIt(w[0]))}</span></button>`).join('')}</div>`;
-    const hear = () => Voice.seq(opts3.flatMap(w => [{ t: w[0], rate: .65 }, 500]).concat([S().gOdd])); $('#hear').onclick = hear; askOnce(opts, r, S().gOddIntro, hear);
+    bigOpts(sh.area); const hear = () => Voice.seq(opts3.flatMap(w => [{ t: w[0], rate: .65 }, 500]).concat([S().gOdd])); $('#hear').onclick = hear; askOnce(opts, r, S().gOddIntro, hear);
     $$('[data-w]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.w === odd[0]) { if (tries === 0) hit('odd:' + odd[0]); adapt('odd', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: odd[0], rate: .7 }, 300, fmt(S().startsDiff, { w: odd[0], L: odd[0][0] }), 300]); if (tries === 0) won++; } else { tries++; miss('odd:' + odd[0]); if (tries === 1) adapt('odd', false); Voice.seq([{ t: b.dataset.w, rate: .7 }, 200, { t: same.find(w => w[0] !== b.dataset.w)[0], rate: .7 }, 300, S().sameStart]); wrong(sh, b, null, tries, `[data-w="${odd[0]}"]`); } }); }
   $('#guideText').textContent = S().gOdd; round();
 }
