@@ -146,6 +146,11 @@ select{font:inherit;padding:10px 12px;border-radius:14px;border:3px solid var(--
 .slot.jig.good{background:var(--good);border-color:var(--good);color:#fff}
 .piece.jig::after{content:"";position:absolute;right:-9px;top:50%;width:18px;height:18px;border-radius:50%;background:var(--e);transform:translateY(-50%)}
 .piece.jig::before{content:"";position:absolute;left:0;top:50%;width:18px;height:18px;border-radius:50%;background:var(--card);transform:translate(-50%,-50%)}
+/* zona de padres: dónde falla más */
+.weak{display:flex;flex-direction:column;gap:8px}
+.weakrow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg);border-radius:14px;padding:10px 12px}
+.weakrow div{display:flex;flex-direction:column;min-width:0}.weakrow b{font-family:var(--display);font-size:1.1rem}.weakrow small{color:var(--muted);font-size:.8rem}
+.weakrow .btn{padding:8px 14px;font-size:.95rem;min-height:40px;flex:none}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
 .confetti i{position:absolute;top:-20px;width:12px;height:12px;border-radius:3px;animation:fall 1.3s linear forwards}

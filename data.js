@@ -17,6 +17,7 @@ window.LYA_DATA = {
       parentsGate: 'Para entrar, resuelve: {a} × {b} = ?', wrongGate: 'Esa no es la respuesta', settings: 'Ajustes', voice: 'Voz', speed: 'Velocidad', letterCase: 'Letras', sfx: 'Sonidos del juego', reset: 'Borrar progreso de {name}', resetAll: 'Borrar todo', install: 'Instalar la app',
       noVoice: 'No encontré una voz en español en este dispositivo. En Ajustes del teléfono → Accesibilidad → Texto a voz, instala la voz en español.', audioOff: 'Toca cualquier botón para activar el sonido',
       badgeNames: { first: 'Primera estrella', ten: '10 estrellas', fifty: '50 estrellas', hundred: '100 estrellas', vowels: 'Rey de las vocales', abc: 'Abecedario completo', story: 'Primer cuento', trace: 'Manos de artista', games: 'Campeón de juegos' },
+      weakT: 'Dónde falla más', noWeak: 'Todavía no hay fallos registrados. Cuando el niño juegue, aquí verás en qué se equivoca y podrás repetir solo eso.', errorsW: 'fallos', failRate: 'de error', practice: 'Practicar',
       numbers: ['uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce'],
       about: 'Leo y Aprendo es gratis, sin anuncios y funciona sin internet.',
       say: {
@@ -70,6 +71,7 @@ window.LYA_DATA = {
       parentsGate: 'To enter, solve: {a} × {b} = ?', wrongGate: "That's not the answer", settings: 'Settings', voice: 'Voice', speed: 'Speed', letterCase: 'Letters', sfx: 'Game sounds', reset: "Erase {name}'s progress", resetAll: 'Erase everything', install: 'Install the app',
       noVoice: 'No English voice was found on this device. In the phone Settings → Accessibility → Text-to-speech, install an English voice.', audioOff: 'Tap any button to turn on sound',
       badgeNames: { first: 'First star', ten: '10 stars', fifty: '50 stars', hundred: '100 stars', vowels: 'Vowel king', abc: 'Whole alphabet', story: 'First story', trace: 'Artist hands', games: 'Game champion' },
+      weakT: 'Where they struggle most', noWeak: 'No mistakes recorded yet. Once the child plays, you will see here what they get wrong and can practice just that.', errorsW: 'misses', failRate: 'error rate', practice: 'Practice',
       numbers: ['one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve'],
       about: 'Leo y Aprendo is free, has no ads and works offline.',
       say: {
