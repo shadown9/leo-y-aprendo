@@ -15,6 +15,7 @@ for (const L of ['es', 'en']) {
   Object.values(s).forEach(v => { if (typeof v === 'string' && !v.includes('{')) add(v); });
   u.good.forEach(add); add(u.bad); add(u.hear); u.numbers.forEach(add); add(u.welcome); add(u.reviewT);
   for (let n = 0; n <= 14; n++) add(fmt(u.done, { n }));
+  add('0'); // trazar el cero
   // Vocales
   t.vowels.forEach(v => { add(v[0]); add(v[0].toLowerCase()); add(v[1]); add(fmt(s.thisIs, { L: v[0] })); add(fmt(s.ofWord, { L: v[0], w: v[1] })); add(fmt(s.tapIt, { L: v[0] })); });
   // Letras: nombre, sonido, "esta es la letra", "X de palabra"
@@ -53,7 +54,7 @@ for (const L of ['es', 'en']) {
   if (t.days) { t.days.forEach(d => { add(d); add(fmt(s.dayIs, { d })); add(fmt(s.gDay, { d })); }); add(t.days.join(', ')); for (let i = 0; i < 7; i++) add(fmt(s.afterIs, { a: t.days[i], b: t.days[(i + 1) % 7] }));
     t.months.forEach(mo => add(mo[0])); add(s.oneOclock); add(s.oneHalf); for (let h = 2; h <= 12; h++) { add(fmt(s.oclock, { h: u.numbers[h - 1] })); add(fmt(s.half, { h: u.numbers[h - 1] })); } }
   // Ciencia
-  const fem = ['vaca', 'gallina', 'oveja', 'rana', 'abeja', 'ballena']; const art = n => L === 'en' ? 'the ' + n : (fem.includes(n) ? 'la ' : 'el ') + n; const cap = x => x.charAt(0).toUpperCase() + x.slice(1);
+  const fem = ['vaca', 'gallina', 'oveja', 'rana', 'abeja', 'ballena', 'tortuga', 'mariposa']; const art = n => L === 'en' ? 'the ' + n : (fem.includes(n) ? 'la ' : 'el ') + n; const cap = x => x.charAt(0).toUpperCase() + x.slice(1);
   (t.animals || []).forEach(a => { add(a[0]); add(a[2]); add(fmt(s.animalSays, { a: cap(art(a[0])), s: a[2] })); add(fmt(s.livesIn, { a: cap(art(a[0])), h: a[3] })); add(fmt(s.eats, { a: cap(art(a[0])), f: a[4] })); add(fmt(s.gHabitat, { a: art(a[0]) })); });
   (t.plant || []).forEach(pp => add(fmt(s.partIs, { p: pp[0], d: pp[2] }))); if (s.plantGrow) add(s.plantGrow);
   (t.planets || []).forEach(pl => add(fmt(s.planetIs, { p: pl[0], d: pl[2] }))); add(u.noSongs);

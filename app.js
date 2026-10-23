@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v26';
+const APP_VERSION = 'v27';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -404,7 +404,7 @@ function storyScreen(k) { Diag.crumb('story:' + k);
       $$('.w', main).forEach(b => b.onclick = () => { Voice.say(b.dataset.w, { rate: .75 }); });
       $('#next').textContent = '➡️'; if (first) { first = false; Voice.seq([s.title, 700], read); } else read(); }
     else quiz(); }
-  function read() { if (pg < n) { Voice.stop(); setTimeout(() => readAlong($('#sent'), s.pages[pg][0], () => { if (pg === n - 1) return; setTimeout(() => { $('#next').classList.add('pulse'); }, 600); }), 100); } }
+  function read() { if (pg < n) { Voice.stop(); setTimeout(() => readAlong($('#sent'), s.pages[pg][0], () => { if (pg === n - 1) return; setTimeout(() => { const nx = $('#next'); if (nx) nx.classList.add('pulse'); }, 600); }), 100); } }
   const qs = s.qs || [s.q]; let qi = 0;
   function quiz() { const q = qs[qi]; const opts = q[1].map((o, i) => [o, i]); const last = qi === qs.length - 1;
     $('#stage').innerHTML = `<div class="sub">${esc(u.question)} ${qs.length > 1 ? (qi + 1) + '/' + qs.length : ''}</div><div class="word" style="font-size:1.5rem;letter-spacing:0">${esc(q[0])}</div>
@@ -420,8 +420,9 @@ function storyScreen(k) { Diag.crumb('story:' + k);
 
 /* ---------- 7. trace ---------- */
 function traceScreen(startLetter) { Diag.crumb('traceScreen');
-  const t = T(), u = U(); const letters = t.vowels.map(v => v[0]).concat(t.letters.map(l => l[0].toUpperCase())).sort((a, b) => a.localeCompare(b, 'es'));
-  let L = startLetter || letters[0], upper = true;
+  // Letras ordenadas y, al final, los números del 0 al 9 (preescritura de cifras; no tienen minúscula).
+  const t = T(), u = U(); const letters = t.vowels.map(v => v[0]).concat(t.letters.map(l => l[0].toUpperCase())).sort((a, b) => a.localeCompare(b, 'es')).concat('0123456789'.split(''));
+  let L = startLetter || letters[0], upper = true; const isDigit = () => /^\d$/.test(L);
   main.innerHTML = `<section class="screen">${topbar(u.traceT)}
     <div class="chips" style="overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start;padding:4px 2px" id="lchips">${letters.map(l => `<button class="chip ${has('trace:' + l) ? 'on' : ''}" type="button" data-l="${l}">${l}</button>`).join('')}</div>
     ${guideHtml(S().trace)}
@@ -434,7 +435,7 @@ function traceScreen(startLetter) { Diag.crumb('traceScreen');
   const cv = $('#cv'), ctx = cv.getContext('2d'); const guide = document.createElement('canvas'); guide.width = guide.height = 600; const gctx = guide.getContext('2d');
   const colors = ['#ff6b6b', '#ffb400', '#2ec4b6', '#5b8def', '#b56fe3']; let strokeColor = colors[0];
   function draw() { const ch = upper ? L : L.toLowerCase();
-    $$('#lchips .chip').forEach(b => b.classList.toggle('on', b.dataset.l === L)); $('#caseU').classList.toggle('on', upper); $('#caseL').classList.toggle('on', !upper);
+    $$('#lchips .chip').forEach(b => b.classList.toggle('on', b.dataset.l === L)); $('#caseU').classList.toggle('on', upper); $('#caseL').classList.toggle('on', !upper); $('#caseU').hidden = $('#caseL').hidden = isDigit();
     gctx.clearRect(0, 0, 600, 600); gctx.font = '700 420px Fredoka, Nunito, Arial, sans-serif'; gctx.textAlign = 'center'; gctx.textBaseline = 'middle'; gctx.fillStyle = '#000'; gctx.fillText(ch, 300, 320);
     ctx.clearRect(0, 0, 600, 600); ctx.save(); ctx.globalAlpha = .18; ctx.drawImage(guide, 0, 0); ctx.restore();
     // dashed outline so the child sees the path
@@ -450,7 +451,7 @@ function traceScreen(startLetter) { Diag.crumb('traceScreen');
     return { cov: tot ? hit / tot : 0, outside: inkTotal ? outside / inkTotal : 0 }; }
   $('#done').onclick = () => { const r = coverage();
     if (r.cov > .35 && r.outside < .6) { $('#fb').textContent = cheer(); Sfx.good(); confetti(); award(1, 'trace:' + L + (upper ? '' : ':min'));
-      if (upper) { Voice.seq([cheer(), 700, S().nowLower, 400], () => { upper = false; draw(); Voice.seq([{ t: L, rate: .6 }]); }); }
+      if (upper && !isDigit()) { Voice.seq([cheer(), 700, S().nowLower, 400], () => { upper = false; draw(); Voice.seq([{ t: L, rate: .6 }]); }); }
       else { const idx = letters.indexOf(L); Voice.seq([cheer(), 700, S().next, 300], () => { L = letters[(idx + 1) % letters.length]; upper = true; draw(); Voice.seq([{ t: L, rate: .6 }]); $$('#lchips .chip').find(b => b.dataset.l === L).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }); } }
     else { $('#fb').textContent = u.bad; Sfx.bad(); miss('trace:' + L); Voice.seq([u.bad, 500, S().trace]); } };
   $('#clear').onclick = () => { Sfx.tap(); draw(); }; $('#say').onclick = () => Voice.say(L);
@@ -465,7 +466,7 @@ function gamesScreen() { Diag.crumb('gamesScreen');
   main.innerHTML = `<section class="screen">${topbar(u.gamesT)}
     ${guideHtml(S().games)}
     <div class="home">${u.games.map((g, i) => `<button class="door d${(i % 8) + 1}" type="button" data-g="${i}"><span class="big">${g[2]}</span>${esc(g[0])}<small>${esc(g[1])}</small></button>`).join('')}</div></section>`;
-  $$('[data-g]', main).forEach(b => b.onclick = () => { Sfx.tap(); [gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, gameCount, gameTapNum, gameColor, gameShape, gameAdd, gameSub, gameFeel, gameClock, gameDay, gameAnimalSound, gameHabitat, gameMoney, gameWrite, gameBody, gameWeather, gameRead, gameMult, gameFrac][+b.dataset.g](); });
+  $$('[data-g]', main).forEach(b => b.onclick = () => { Sfx.tap(); [gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, gameCount, gameTapNum, gameColor, gameShape, gameAdd, gameSub, gameFeel, gameClock, gameDay, gameAnimalSound, gameHabitat, gameMoney, gameWrite, gameBody, gameWeather, gameRead, gameMult, gameFrac, gameSyl][+b.dataset.g](); });
   wire(); guideSay(S().games);
 }
 let roundWatch = null;
@@ -576,7 +577,8 @@ function gameBuild(focus, opts) { Diag.crumb('gameBuild'); opts = opts || {};
   $('#guideText').textContent = S().gBuild; round();
 }
 function gameFirst(focus, opts) { Diag.crumb('gameFirst'); opts = opts || {};
-  const t = T(), u = U(); const all = t.letters.concat(t.vowels.map(v => [v[0].toLowerCase(), v[1], v[2], v[0]])); const sh = gameShell(u.games[3][0], opts, 6); let r = 0, won = 0; const L = level('first'); const nOpts = [3, 4, 6][L - 1];
+  // Solo letras cuya palabra empieza de verdad con ellas (en inglés "x de fox" no sirve para "¿con qué letra empieza?")
+  const t = T(), u = U(); const all = t.letters.concat(t.vowels.map(v => [v[0].toLowerCase(), v[1], v[2], v[0]])).filter(x => x[1].toLowerCase().startsWith(x[0])); const sh = gameShell(u.games[3][0], opts, 6); let r = 0, won = 0; const L = level('first'); const nOpts = [3, 4, 6][L - 1];
   function round() { if (r === sh.n) { done(sh, won, () => gameFirst(focus), opts); return; }
     sh.bar.style.width = (r / sh.n * 100) + '%'; const ans = (focus && r % 2 === 0 && all.find(x => x[0] === focus)) || all[Math.floor(Math.random() * all.length)]; let tries = 0; firstSeen('letter:' + ans[0]);
     const opts3 = shuffle([ans].concat(pick(all.filter(x => x[0] !== ans[0]), nOpts - 1)));
@@ -610,6 +612,24 @@ function gameMissing(focus, opts) { Diag.crumb('gameMissing'); opts = opts || {}
     bigOpts(sh.area); const hear = () => Voice.seq([{ t: word, rate: .6 }, 500, { t: word, rate: .75 }]); $('#hear').onclick = hear; askOnce(opts, r, S().gMissing, hear);
     $$('[data-v]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.v === ans) { $('#gap').textContent = caseIt(ans); $('#gap').style.borderBottom = 'none'; if (tries === 0) hit('missing:' + word); adapt('missing', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: word, rate: .7 }, 400]); if (tries === 0) won++; } else { tries++; miss('missing:' + word); if (tries === 1) adapt('missing', false); wrong(sh, b, hear, tries, `[data-v="${ans}"]`); } }); }
   $('#guideText').textContent = S().gMissing; round();
+}
+/* ¿Qué sílaba escuchas? El paso entre las letras y las palabras: oír "ma" y distinguirla de "me" (vocal) o de "pa" (consonante). */
+function gameSyl(focus, opts) { Diag.crumb('gameSyl'); opts = opts || {};
+  const t = T(), u = U(); const vs = ['a', 'e', 'i', 'o', 'u']; const sh = gameShell(u.games[27][0], opts, 6); let r = 0, won = 0; const L = level('syl');
+  // Blending solo con consonantes continuas ("mmm… a… ma"); las oclusivas (b, p, t…) no se alargan: se repite la sílaba.
+  const snd = x => (t.sounds || {})[x] || ''; const blend = (c, v, s) => snd(c) && !snd(c).includes(',') ? [{ t: snd(c), rate: .55 }, 400, { t: v, rate: .55 }, 400, { t: s, rate: .65 }] : [{ t: s, rate: .55 }, 500, { t: s, rate: .65 }];
+  function round() { if (r === sh.n) { done(sh, won, () => gameSyl(focus), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; let tries = 0;
+    let c = t.cons[Math.floor(Math.random() * t.cons.length)], v = vs[Math.floor(Math.random() * 5)];
+    if (focus && r % 2 === 0) { const m = t.cons.find(x => focus.startsWith(x) && vs.includes(focus.slice(x.length))); if (m) { c = m; v = focus.slice(m.length); } }
+    const ans = u.sylOf(c, v); firstSeen('syl:' + ans);
+    // Nivel 1: misma consonante, 3 vocales. Nivel 2: misma consonante, las 5. Nivel 3: misma vocal, consonantes distintas (hay que oír el inicio).
+    const optsS = L === 3 ? shuffle([c].concat(pick(t.cons.filter(x => x !== c), 3))).map(x => u.sylOf(x, v)) : (L === 1 ? shuffle([v].concat(pick(vs.filter(x => x !== v), 2))) : vs).map(x => u.sylOf(c, x));
+    sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.hear)}</p>
+      <div class="grid">${optsS.map(s => `<button class="tile ${L === 3 ? '' : cls[vs.indexOf(s.slice(c.length))] || ''}" type="button" data-s="${esc(s)}">${caseIt(s)}</button>`).join('')}</div>`;
+    bigOpts(sh.area); const hear = () => Voice.seq([{ t: ans, rate: .6 }, 700, { t: ans, rate: .6 }]); $('#hear').onclick = hear; askOnce(opts, r, S().gSyl, hear);
+    $$('[data-s]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.s === ans) { if (tries === 0) hit('syl:' + ans); adapt('syl', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, blend(c, v, ans).concat([300])); if (tries === 0) won++; } else { tries++; miss('syl:' + ans); if (tries === 1) adapt('syl', false); Voice.seq([{ t: b.dataset.s, rate: .6 }]); wrong(sh, b, null, tries, `[data-s="${ans}"]`); } }); }
+  $('#guideText').textContent = S().gSyl; round();
 }
 
 /* ---------- conciencia fonológica (rimas, sílabas, sonido inicial): lo que más predice la lectura ---------- */
@@ -648,13 +668,15 @@ function gameClap(focus, opts) { Diag.crumb('gameClap'); opts = opts || {};
 }
 function gameOdd(focus, opts) { Diag.crumb('gameOdd'); opts = opts || {};
   const t = T(), u = U(); const all = t.wordCats.flatMap(c => c[2]); const sh = gameShell(u.games[8][0], opts, 6); let r = 0, won = 0;
-  const byFirst = {}; all.forEach(w => { const f = w[0][0]; (byFirst[f] = byFirst[f] || []).push(w); }); const groups = Object.keys(byFirst).filter(f => byFirst[f].length >= 2);
+  // El sonido inicial es el dígrafo completo: "chico" no empieza igual que "casa", ni "llave" como "luna".
+  const onset = w => (w.match(/^(ch|ll|sh|th|qu|rr)/) || [w[0]])[0];
+  const byFirst = {}; all.forEach(w => { const f = onset(w[0]); (byFirst[f] = byFirst[f] || []).push(w); }); const groups = Object.keys(byFirst).filter(f => byFirst[f].length >= 2);
   function round() { if (r === sh.n) { done(sh, won, () => gameOdd(focus), opts); return; }
-    sh.bar.style.width = (r / sh.n * 100) + '%'; const f = groups[Math.floor(Math.random() * groups.length)]; const same = pick(byFirst[f], 2); const odd = pick(all.filter(w => w[0][0] !== f), 1)[0]; const opts3 = shuffle(same.concat([odd])); let tries = 0; firstSeen('odd:' + odd[0]);
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const f = groups[Math.floor(Math.random() * groups.length)]; const same = pick(byFirst[f], 2); const odd = pick(all.filter(w => onset(w[0]) !== f), 1)[0]; const opts3 = shuffle(same.concat([odd])); let tries = 0; firstSeen('odd:' + odd[0]);
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(S().gOdd)}</p>
       <div class="grid wide">${opts3.map(w => `<button class="tile" type="button" data-w="${esc(w[0])}"><span class="pic">${w[1]}</span><span class="lbl">${esc(caseIt(w[0]))}</span></button>`).join('')}</div>`;
     bigOpts(sh.area); const hear = () => Voice.seq(opts3.flatMap(w => [{ t: w[0], rate: .65 }, 500]).concat([S().gOdd])); $('#hear').onclick = hear; askOnce(opts, r, S().gOddIntro, hear);
-    $$('[data-w]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.w === odd[0]) { if (tries === 0) hit('odd:' + odd[0]); adapt('odd', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: odd[0], rate: .7 }, 300, fmt(S().startsDiff, { w: odd[0], L: odd[0][0] }), 300]); if (tries === 0) won++; } else { tries++; miss('odd:' + odd[0]); if (tries === 1) adapt('odd', false); Voice.seq([{ t: b.dataset.w, rate: .7 }, 200, { t: same.find(w => w[0] !== b.dataset.w)[0], rate: .7 }, 300, S().sameStart]); wrong(sh, b, null, tries, `[data-w="${odd[0]}"]`); } }); }
+    $$('[data-w]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.w === odd[0]) { if (tries === 0) hit('odd:' + odd[0]); adapt('odd', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: odd[0], rate: .7 }, 300, fmt(S().startsDiff, { w: odd[0], L: onset(odd[0]) }), 300]); if (tries === 0) won++; } else { tries++; miss('odd:' + odd[0]); if (tries === 1) adapt('odd', false); Voice.seq([{ t: b.dataset.w, rate: .7 }, 200, { t: same.find(w => w[0] !== b.dataset.w)[0], rate: .7 }, 300, S().sameStart]); wrong(sh, b, null, tries, `[data-w="${odd[0]}"]`); } }); }
   $('#guideText').textContent = S().gOdd; round();
 }
 
@@ -666,11 +688,11 @@ function reviewPlan() {
   const weak = Object.keys(e).filter(k => e[k] > 0).sort((a, b) => e[b] - e[a]);
   const stale = Object.keys(seen).filter(k => now - seen[k] > old && !weak.includes(k)).sort(() => Math.random() - .5);
   const keys = weak.slice(0, 4).concat(stale.slice(0, 4));
-  const map = { vowel: ['gameVowel', k => T().vowels.findIndex(v => v[0] === k)], word: ['gameWord', k => k], letter: ['gameFirst', k => k], missing: ['gameMissing', k => k], build: ['gameBuild', k => k], rhyme: ['gameRhyme', k => null], clap: ['gameClap', k => null], odd: ['gameOdd', k => null], num: ['gameCount', k => k], color: ['gameColor', k => k], math: [null, k => null], emo: ['gameFeel', k => null], time: ['gameClock', k => null], sci: ['gameAnimalSound', k => null], money: ['gameMoney', k => null], write: ['gameWrite', k => null], body: ['gameBody', k => null], read: ['gameRead', k => null], mult: ['gameMult', k => null] };
+  const map = { vowel: ['gameVowel', k => T().vowels.findIndex(v => v[0] === k)], word: ['gameWord', k => k], letter: ['gameFirst', k => k], missing: ['gameMissing', k => k], syl: ['gameSyl', k => k], build: ['gameBuild', k => k], rhyme: ['gameRhyme', k => null], clap: ['gameClap', k => null], odd: ['gameOdd', k => null], num: ['gameCount', k => k], color: ['gameColor', k => k], math: [null, k => null], emo: ['gameFeel', k => null], time: ['gameClock', k => null], sci: ['gameAnimalSound', k => null], money: ['gameMoney', k => null], write: ['gameWrite', k => null], body: ['gameBody', k => null], read: ['gameRead', k => null], mult: ['gameMult', k => null] };
   const segs = []; const used = new Set();
   keys.forEach(key => { const [kind, id] = key.split(/:(.+)/); let m = map[kind]; if (kind === 'math') m = [id.includes('+') ? 'gameAdd' : 'gameSub', () => null]; if (m && m[0] && !used.has(m[0])) { used.add(m[0]); segs.push({ fn: m[0], focus: m[1](id) }); } });
   // Rellena hasta 4 segmentos con juegos variados (siempre hay repaso, aunque no haya fallos todavía)
-  ['gameVowel', 'gameFirst', 'gameRhyme', 'gameCount', 'gameWord', 'gameClap', 'gameMissing', 'gameOdd', 'gameTapNum', 'gameColor', 'gameShape', 'gameAdd', 'gameSub', 'gameFeel', 'gameClock', 'gameDay', 'gameAnimalSound', 'gameHabitat', 'gameMoney', 'gameWrite', 'gameBody', 'gameWeather', 'gameMult', 'gameFrac'].forEach(fn => { if (segs.length < 4 && !used.has(fn)) { used.add(fn); segs.push({ fn, focus: null }); } });
+  ['gameVowel', 'gameFirst', 'gameSyl', 'gameRhyme', 'gameCount', 'gameWord', 'gameClap', 'gameMissing', 'gameOdd', 'gameTapNum', 'gameColor', 'gameShape', 'gameAdd', 'gameSub', 'gameFeel', 'gameClock', 'gameDay', 'gameAnimalSound', 'gameHabitat', 'gameMoney', 'gameWrite', 'gameBody', 'gameWeather', 'gameMult', 'gameFrac'].forEach(fn => { if (segs.length < 4 && !used.has(fn)) { used.add(fn); segs.push({ fn, focus: null }); } });
   return segs.slice(0, 4);
 }
 const GAME_FNS = {};
@@ -681,7 +703,7 @@ function reviewGame() { Diag.crumb('reviewGame'); const segs = reviewPlan(); let
   const run = () => { const sgm = segs[i]; GAME_FNS[sgm.fn](sgm.focus, { rounds: 2, next, part: true, quiet: i > 0 }); const p = $('#guideText'); if (p) p.textContent = U().reviewT + ' ' + (i + 1) + '/' + segs.length; };
   Voice.seq([S().reviewIntro, 400], run);
 }
-Object.assign(GAME_FNS, { gameVowel, gameWord, gameBuild, gameFirst, gameMissing, gameRhyme, gameClap, gameOdd });
+Object.assign(GAME_FNS, { gameVowel, gameWord, gameBuild, gameFirst, gameMissing, gameSyl, gameRhyme, gameClap, gameOdd });
 
 /* ---------- Números: contar tocando (correspondencia uno a uno), del 1 al 20 ---------- */
 function numbersScreen(startAt) { Diag.crumb('numbersScreen');
@@ -709,7 +731,7 @@ function gameCount(focus, opts) { Diag.crumb('gameCount'); opts = opts || {};
   const t = T(), u = U(), s = S(); const nums = u.numbers; const sh = gameShell(u.games[9][0], opts, 6); let r = 0, won = 0; const L = level('count'); const max = [5, 10, 20][L - 1];
   function round() { if (r === sh.n) { done(sh, won, () => gameCount(focus), opts); return; }
     sh.bar.style.width = (r / sh.n * 100) + '%'; const k = (focus && r % 2 === 0) ? +focus : 1 + Math.floor(Math.random() * max); const thing = t.countThings[Math.floor(Math.random() * t.countThings.length)]; let tries = 0; firstSeen('num:' + k);
-    const cands = []; for (let i = Math.max(1, k - 3); i <= Math.min(max, k + 3); i++) if (i !== k) cands.push(i); const optsN = shuffle([k].concat(pick(cands, 2)));
+    const cands = []; for (let i = Math.max(1, k - 3); i <= Math.min(Math.max(max, k), k + 3); i++) if (i !== k) cands.push(i); const optsN = shuffle([k].concat(pick(cands, 2)));
     sh.area.innerHTML = `<div class="stage"><div class="countrow big">${Array.from({ length: k }, () => `<span>${thing[1]}</span>`).join('')}</div><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(s.howMany)}</p>
       <div class="grid">${optsN.map(v => `<button class="tile" type="button" data-n="${v}">${v}</button>`).join('')}</div>`;
     bigOpts(sh.area); const hear = () => Voice.seq([s.howMany]); $('#hear').onclick = hear; askOnce(opts, r, s.gCount, hear);
@@ -882,7 +904,7 @@ Object.assign(GAME_FNS, { gameClock, gameDay });
 const Sfxfile = { index: null, load() { fetch('sonidos/index.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(j => { this.index = new Set(j || []); }).catch(() => {}); },
   has(key) { return !!(this.index && this.index.has(key)); }, play(key, onend) { if (!this.has(key)) { if (onend) onend(); return false; } Clips.play('sonidos/' + key + '.mp3', { onend }); return true; } };
 const cap = str => str.charAt(0).toUpperCase() + str.slice(1);
-function withArt(name) { if (settings.lang === 'en') return 'the ' + name; const fem = ['vaca', 'gallina', 'oveja', 'rana', 'abeja', 'ballena']; return (fem.includes(name) ? 'la ' : 'el ') + name; }
+function withArt(name) { if (settings.lang === 'en') return 'the ' + name; const fem = ['vaca', 'gallina', 'oveja', 'rana', 'abeja', 'ballena', 'tortuga', 'mariposa']; return (fem.includes(name) ? 'la ' : 'el ') + name; }
 function animalKey(a) { return a[6].replace(/\s+/g, '_'); }
 function animalSound(a, then) { // sonido real si está; si no, la voz hace la onomatopeya
   if (Sfxfile.has(animalKey(a))) { Voice.stop(); Sfxfile.play(animalKey(a), then); } else Voice.seq([{ t: a[2], rate: .8 }], then); }
@@ -909,8 +931,10 @@ function scienceScreen() { Diag.crumb('scienceScreen');
 }
 function gameAnimalSound(focus, opts) { Diag.crumb('gameAnimalSound'); opts = opts || {};
   const t = T(), u = U(), s = S(); const sh = gameShell(u.games[18][0], opts, 6); let r = 0, won = 0; const L = level('animal'); const nOpts = [3, 4, 6][L - 1];
+  // Los animales callados (tortuga, mariposa) pueden ser opción, pero nunca la respuesta: no hay sonido que adivinar.
+  const quiet = ['tortuga', 'mariposa', 'turtle', 'butterfly']; const pool = t.animals.filter(a => !quiet.includes(a[0]));
   function round() { if (r === sh.n) { done(sh, won, () => gameAnimalSound(focus), opts); return; }
-    sh.bar.style.width = (r / sh.n * 100) + '%'; const ans = t.animals[Math.floor(Math.random() * t.animals.length)]; let tries = 0; firstSeen('sci:' + ans[0]);
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const ans = pool[Math.floor(Math.random() * pool.length)]; let tries = 0; firstSeen('sci:' + ans[0]);
     const optsA = shuffle([ans].concat(pick(t.animals.filter(a => a !== ans), nOpts - 1)));
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.hear)}</p>
       <div class="grid">${optsA.map(a => `<button class="tile keep" type="button" data-a="${esc(a[0])}" style="--cube:var(--card)"><span class="pic">${a[1]}</span>${L < 3 ? `<span class="lbl" style="color:var(--fg)">${esc(caseIt(a[0]))}</span>` : ''}</button>`).join('')}</div>`;
@@ -1046,7 +1070,7 @@ function gameRead(focus, opts) { Diag.crumb('gameRead'); opts = opts || {};
   sh.area.innerHTML = `<div class="stage"><div class="reading" id="rtext">${words.map(w => `<button class="w" type="button" data-w="${esc(w.replace(/[.,!?—"¡¿]/g, ''))}">${esc(w)}</button>`).join(' ')}</div>
     <div class="row"><button class="btn big icon" id="readAll" type="button">🔊</button><button class="btn icon" id="goQ" type="button">➡️</button></div></div>`;
   $$('.w', sh.area).forEach(b => b.onclick = () => Voice.seq([{ t: b.dataset.w, rate: .8 }]));
-  const readAll = () => { Voice.stop(); setTimeout(() => readAlong($('#rtext'), rd.text, () => $('#goQ').classList.add('pulse')), 100); };
+  const readAll = () => { Voice.stop(); setTimeout(() => readAlong($('#rtext'), rd.text, () => { const g = $('#goQ'); if (g) g.classList.add('pulse'); }), 100); };
   $('#readAll').onclick = readAll; $('#goQ').onclick = () => { Voice.stop(); question(); };
   Voice.seq([s.read, 300, s.readTap], () => { if (level('read') === 1) readAll(); else $('#goQ').classList.add('pulse'); });
   function question() { if (r === rd.qs.length) { mark('read:' + L + ':' + idx); done(sh, won, () => gameRead(idx), opts); return; }
@@ -1110,12 +1134,12 @@ function parentsScreen() { Diag.crumb('parentsScreen');
 }
 function parentsPanel() { Diag.crumb('parentsPanel');
   const t = T(), u = U(); const L = settings.lang; const lv = u.levels;
-  const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, 27, 10, 20, t.colors.length + t.shapes.length, 20, t.emotions.length, 12 + 7 + 12, t.animals.length + t.plant.length + 1 + t.planets.length, t.songs.length, t.coins.length, t.writeWords.length, t.bodyParts.length + t.weatherKinds.length, t.readings.length, 5 + t.fractions.length];
+  const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, t.letters.length + 5 + 10, 10, 20, t.colors.length + t.shapes.length, 20, t.emotions.length, 12 + 7 + 12, t.animals.length + t.plant.length + 1 + t.planets.length, t.songs.length, t.coins.length, t.writeWords.length, t.bodyParts.length + t.weatherKinds.length, t.readings.length, 5 + t.fractions.length];
   const vs = Voice.voices.filter(v => (v.lang || '').toLowerCase().startsWith(T().code));
   main.innerHTML = `<section class="screen">${topbar(u.parentsT)}
     <div class="card"><h3>${esc(u.progress)} · ${P.avatar} ${esc(P.name)} · ⭐ ${P.stars}</h3>
       <div class="bars">${lv.map((l, i) => { const n = Math.min(levelStars(i), totals[i]); return `<div class="bar"><span>${l[2]} ${esc(l[0])}</span><div class="progress"><i style="width:${n / totals[i] * 100}%"></i></div><em>${n}/${totals[i]}</em></div>`; }).join('')}</div></div>
-    <div class="card"><h3>${esc(u.levelsT)}</h3><div class="badgerow">${['vowel', 'word', 'build', 'first', 'missing', 'rhyme', 'clap', 'odd', 'count', 'tapnum', 'color', 'shape', 'add', 'sub', 'feel', 'clock', 'day', 'animal', 'habitat', 'money', 'write', 'body', 'weather', 'read', 'mult', 'frac'].map((g, i) => `<span class="badge on">${esc(u.games[[0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26][i]][0])}: ${level(g)}/3</span>`).join('')}</div><small style="color:var(--muted)">${esc(u.levelsHelp)} · 🔥 ${P.streak || 0} · ${esc(u.reviewsN)}: ${P.reviews || 0}</small></div>
+    <div class="card"><h3>${esc(u.levelsT)}</h3><div class="badgerow">${['vowel', 'word', 'build', 'first', 'missing', 'syl', 'rhyme', 'clap', 'odd', 'count', 'tapnum', 'color', 'shape', 'add', 'sub', 'feel', 'clock', 'day', 'animal', 'habitat', 'money', 'write', 'body', 'weather', 'read', 'mult', 'frac'].map((g, i) => `<span class="badge on">${esc(u.games[[0, 1, 2, 3, 5, 27, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26][i]][0])}: ${level(g)}/3</span>`).join('')}</div><small style="color:var(--muted)">${esc(u.levelsHelp)} · 🔥 ${P.streak || 0} · ${esc(u.reviewsN)}: ${P.reviews || 0}</small></div>
     <div class="card"><h3>${esc(u.weakT)}</h3>${weakList()}</div>
     <div class="card"><h3>${esc(u.badges)}</h3><div class="badgerow">${BADGES.map(b => `<span class="badge ${P.badges && P.badges[b] ? 'on' : ''}">🏅 ${esc(u.badgeNames[b])}</span>`).join('')}</div></div>
     <div class="card"><h3>${esc(u.settings)}</h3>
@@ -1156,6 +1180,7 @@ function itemLabel(key) { const t = T(); const [kind, id] = key.split(/:(.+)/); 
     case 'word': { const w = find(t.wordCats.flatMap(c => c[2])); return [lv[3][0], w ? w[0] + ' ' + w[1] : id]; }
     case 'build': { const b = t.build.find(x => x.slice(0, -1).join('') === id); return [U().games[2][0], b ? id + ' ' + b[b.length - 1] : id]; }
     case 'missing': { const m = find(t.missing); return [U().games[5][0], m ? id + ' ' + m[1] : id]; }
+    case 'syl': return [U().games[27][0], id];
     case 'trace': return [lv[6][0], id];
     case 'story': { const st = t.stories[+id]; return [lv[5][0], st ? st.title + ' ' + st.cover : id]; }
     case 'num': return [U().games[9][0], id]; case 'color': return [U().games[11][0], id]; case 'math': return [U().games[id.includes('+') ? 13 : 14][0], id.replace('-', ' − ').replace('+', ' + ')]; case 'emo': return [U().games[15][0], id]; case 'time': return [U().games[id.startsWith('h') ? 16 : 17][0], id.replace(/^h/, '🕒 ')]; case 'sci': return [U().games[18][0], id]; case 'money': return [U().games[20][0], id + '¢']; case 'write': return [U().games[21][0], id]; case 'body': return [U().games[22][0], id]; case 'read': return [U().games[24][0], (T().readings[+id] || {}).title || id]; case 'mult': return [U().games[id.includes('/') ? 26 : 25][0], id]; case 'rhyme': return [U().games[6][0], id]; case 'clap': { const c = t.claps.find(x => x[0] === id); return [U().games[7][0], c ? id + ' ' + c[1] : id]; } case 'odd': return [U().games[8][0], id];
@@ -1167,7 +1192,7 @@ function weakList() { const e = (P && P.errors) || {}, h = (P && P.hits) || {};
     return `<div class="weakrow"><div><b>${esc(lbl)}</b><small>${esc(lvl)} · ${r.e} ${esc(U().errorsW)} · ${pct}% ${esc(U().failRate)}</small></div><button class="btn" type="button" data-practice="${esc(r.k)}">▶ ${esc(U().practice)}</button></div>`; }).join('')}</div>`; }
 function practice(key) { const [kind, id] = key.split(/:(.+)/); const t = T(); Voice.stop();
   switch (kind) { case 'vowel': gameVowel(t.vowels.findIndex(v => v[0] === id)); break; case 'letter': gameFirst(id); break; case 'word': gameWord(id); break;
-    case 'build': gameBuild(id); break; case 'missing': gameMissing(id); break; case 'trace': traceScreen(id); break; case 'story': storyScreen(+id); break;
+    case 'build': gameBuild(id); break; case 'missing': gameMissing(id); break; case 'syl': gameSyl(id); break; case 'trace': traceScreen(id); break; case 'story': storyScreen(+id); break;
     case 'rhyme': gameRhyme(); break; case 'clap': gameClap(); break; case 'odd': gameOdd(); break; case 'num': gameCount(id); break; case 'color': { if (T().shapes.find(x => x[0] === id)) gameShape(id); else gameColor(id); break; } case 'math': { if (id.includes('+')) gameAdd(); else gameSub(); break; } case 'emo': gameFeel(); break; case 'time': { if (id.startsWith('h')) gameClock(); else gameDay(); break; } case 'sci': gameAnimalSound(); break; case 'money': gameMoney(); break; case 'write': gameWrite(); break; case 'body': { if (T().weatherKinds.find(w => w[0] === id)) gameWeather(); else gameBody(); break; } case 'read': gameRead(+id); break; case 'mult': { if (id.includes('/')) gameFrac(); else gameMult(); break; } default: home(); } }
 
 /* Pantalla de bienvenida: el primer toque desbloquea el audio del teléfono; después la paloma saluda. */
@@ -1189,7 +1214,7 @@ Diag.log('session', 'inicio ' + APP_VERSION, { lang: settings.lang });
 Clips.load(); Sfxfile.load(); Voice.init();
 P = profiles.find(p => p.id === currentId) || null;
 setHeader();
-function openScreen(name) { const map = { vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, parentsScreen, gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, reviewGame, numbersScreen, gameCount, gameTapNum, colorsScreen, gameColor, gameShape, mathScreen, gameAdd, gameSub, emotionsScreen, gameFeel, timeScreen, gameClock, gameDay, scienceScreen, gameAnimalSound, gameHabitat, songsScreen, moneyScreen, writeScreen, bodyScreen, readScreen, multScreen, gameMoney, gameWrite, gameBody, gameWeather, gameRead, gameMult, gameFrac };
+function openScreen(name) { const map = { vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, parentsScreen, gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, reviewGame, numbersScreen, gameCount, gameTapNum, colorsScreen, gameColor, gameShape, mathScreen, gameAdd, gameSub, emotionsScreen, gameFeel, timeScreen, gameClock, gameDay, scienceScreen, gameAnimalSound, gameHabitat, songsScreen, moneyScreen, writeScreen, bodyScreen, readScreen, multScreen, gameMoney, gameWrite, gameBody, gameWeather, gameRead, gameMult, gameFrac, gameSyl };
   if (name && name.startsWith('story:')) { const k = +name.slice(6); if (T().stories[k]) { storyScreen(k); return true; } }
   if (map[name]) { map[name](); return true; } return false; }
 let last = null; try { last = sessionStorage.getItem('lya:last'); } catch (e) {}

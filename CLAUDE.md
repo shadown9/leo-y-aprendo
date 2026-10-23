@@ -24,7 +24,7 @@ data.js             TODO el contenido bilingüe: window.LYA_DATA.es / .en (+ .av
 sw.js               service worker: cachea la app; voces/sonidos/canciones se cachean al primer uso
 manifest.webmanifest, icons/   PWA instalable
 voces/manifest.json  todas las frases que la app dice (hash → texto), generado por tools/build_manifest.js
-voces/index.json     lista de hashes que SÍ tienen mp3 (lo escribe generate_voices.py). Hoy vacío.
+voces/index.json     hashes que SÍ tienen mp3, con la forma {"es":[...],"en":[...]} (lo escribe generate_voices.py; Clips.load lee j.es / j.en — NO cambiar a lista plana). Hoy vacío.
 voces/es|en/<hash>.mp3   audios grabados (pendiente de generar)
 sonidos/index.json + <clave>.mp3   sonidos reales de animales (pendiente)
 canciones/<id>.<lang>.mp3 + .json  canciones con letra sincronizada (pendiente)
@@ -67,43 +67,44 @@ README.md           instrucciones para humanos (publicar, instalar, voces)
 12. Perfil: 28 animales grandes, nombre opcional (si no escribe, se llama como su animal), botón Empezar fijo abajo y pulsando.
 13. Después de recargar, volver a la misma pantalla. El botón atrás del teléfono no cierra la app.
 
-## 6. Módulos (19 puertas, 27 juegos) — estado: TODOS hechos y publicados (v25)
+## 6. Módulos (20 puertas, 28 juegos) — estado: TODOS hechos y publicados (v27)
 | # | Puerta | Qué hace | Juegos asociados |
 |---|---|---|---|
 | 0 | Vocales | lección guiada A-E-I-O-U (letra, palabra, "toca la A", auto-avanza) | ¿Qué vocal escuchas? · La vocal perdida |
 | 1 | Letras | abecedario en cubos; nombre, sonido, palabra | ¿Con qué letra empieza? |
-| 2 | Sílabas | consonante + vocal, blending "m… a… ma", palabra ejemplo | Arma la palabra (rompecabezas) |
+| 2 | Sílabas | consonante + vocal, blending "m… a… ma", palabra ejemplo | Arma la palabra (rompecabezas) · ¿Qué sílaba escuchas? (nivel 1-2: misma consonante, cambia la vocal; nivel 3: misma vocal, cambia la consonante) |
 | 3 | Palabras | 60 por idioma en 5 categorías, por sílabas | ¿Qué palabra escuchas? · Memoria · ¿Qué rima? · Palmadas · ¿Cuál es distinta? |
-| 4 | Frases | 16 frases, lectura guiada palabra a palabra | — |
-| 5 | Cuentos | 4 cortos (1 pregunta) + 3 largos (9 páginas, 3 preguntas) | — |
-| 6 | Trazar | canvas; mayúscula → minúscula → siguiente letra automático | — |
-| 7 | Juegos | menú de los 27 juegos | — |
+| 4 | Frases | 22 frases, lectura guiada palabra a palabra | — |
+| 5 | Cuentos | 5 cortos (1 pregunta) + 4 largos (9 páginas, 3 preguntas) | — |
+| 6 | Trazar | canvas; mayúscula → minúscula → siguiente letra automático; al final los números 0-9 (sin minúscula) | — |
+| 7 | Juegos | menú de los 28 juegos | — |
 | 8 | Números | contar tocando 1-20 | ¿Cuántos hay? · Toca el número |
 | 9 | Colores y formas | 10 colores, 8 formas SVG | ¿De qué color? · Busca la forma |
 | 10 | Sumas y restas | con dibujos (tachados en resta), hasta 5/10/20 | Sumar · Restar |
 | 11 | Emociones | 8 emociones + respiración guiada | ¿Cómo se siente? |
 | 12 | Hora y calendario | reloj SVG (en punto / y media), días, meses | ¿Qué hora es? · ¿Qué día sigue? |
-| 13 | Ciencia | 18 animales (sonido real si existe), hábitat, comida; planta; planetas | ¿Qué animal suena? · ¿Dónde vive? |
+| 13 | Ciencia | 23 animales (sonido real si existe), hábitat, comida; planta; planetas | ¿Qué animal suena? (tortuga y mariposa nunca son respuesta: son callados) · ¿Dónde vive? |
 | 14 | Canciones | reproductor con letra resaltada (audios pendientes) | — |
 | 15 | Dinero (USD) | 1¢ 5¢ 10¢ 25¢ $1 $5 | ¿Cuánto dinero hay? |
 | 16 | Escribir | tocar letras en orden con distractores | Escribe la palabra |
 | 17 | Mi cuerpo y el clima | 10 partes, 6 climas con ropa | ¿Qué parte es? · ¿Qué me pongo? |
-| 18 | Leer y entender (8+) | 3 textos, 4 preguntas | Preguntas del texto |
+| 18 | Leer y entender (8+) | 5 textos, 4 preguntas | Preguntas del texto |
 | 19 | Multiplicar y fracciones | tablas 2-10 con puntitos, fracciones tipo pizza | Multiplicar · ¿Qué fracción es? |
-Índices de `u.games`: 0-5 clásicos, 6 rima, 7 palmadas, 8 distinta, 9 cuántos, 10 toca número, 11 color, 12 forma, 13 sumar, 14 restar, 15 siente, 16 hora, 17 día, 18 animal, 19 vive, 20 dinero, 21 escribir, 22 cuerpo, 23 ropa, 24 lectura, 25 multiplicar, 26 fracción.
+Índices de `u.games`: 0-5 clásicos, 6 rima, 7 palmadas, 8 distinta, 9 cuántos, 10 toca número, 11 color, 12 forma, 13 sumar, 14 restar, 15 siente, 16 hora, 17 día, 18 animal, 19 vive, 20 dinero, 21 escribir, 22 cuerpo, 23 ropa, 24 lectura, 25 multiplicar, 26 fracción, 27 sílaba.
+Detalles pedagógicos que no hay que deshacer: en "¿Cuál es distinta?" el sonido inicial es el dígrafo completo (ch, ll, sh, th, qu, rr); en "¿Con qué letra empieza?" solo entran letras cuya palabra de verdad empieza con ellas (en inglés "x de fox" queda fuera).
 
 ## 7. Lo que FALTA (en este orden)
 1. **Voces grabadas (español)** — lo más importante; hoy la app usa la voz del teléfono y suena distinto en cada dispositivo. Junior tiene ElevenLabs **Creator** (121.000 créditos/mes, licencia comercial). Voz: Daniela. Pasos:
    ```
    cd ~/leo-y-aprendo && git pull
-   node tools/build_manifest.js                      # voces/manifest.json (es ≈ 2.528 frases / 52k caracteres)
+   node tools/build_manifest.js                      # voces/manifest.json (es ≈ 2.724 frases / 55k caracteres; ya regenerado en v27)
    export ELEVEN_API_KEY=sk_...                      # Junior la crea en elevenlabs.io → perfil → API Keys
    python3 tools/generate_voices.py --list           # copiar el voice_id de "Daniela"
    python3 tools/generate_voices.py --only es --voice-es <ID>
    git add voces && git commit -m "voces es" && git push
    ```
    El script reanuda si se corta (no regenera lo existente). Si una frase suena mal, bórrala de `voces/es/<hash>.mp3` y vuelve a correr. Escuchar en la app: el nombre escrito a mano del niño sigue con voz del teléfono (es normal).
-2. **Inglés**: elegir voz (joven, alegre, americana; probar con "Hi! This is the letter A. A. A. A is for apple. Mmm. M is for moon. One, two, three. Great job!") y generar `--only en --voice-en <ID>` (≈54k caracteres → mes siguiente o créditos extra).
+2. **Inglés**: elegir voz (joven, alegre, americana; probar con "Hi! This is the letter A. A. A. A is for apple. Mmm. M is for moon. One, two, three. Great job!") y generar `--only en --voice-en <ID>` (≈57k caracteres → mes siguiente o créditos extra).
 3. **Sonidos reales de animales**: `python3 tools/generate_sfx.py` (18 sonidos, ~54 s) o grabaciones CC0 (Pixabay/Freesound) guardadas con el nombre `<clave>.mp3` (`dog_bark`, `cat_meow`…) y `--index`.
 4. **Canciones**: `python3 tools/generate_songs.py --only vocales --lang es` como prueba de costo; luego todas. Letras en `tools/songs.json`; `--show` imprime el prompt para generarlas a mano en la app de ElevenLabs si la API de música no está en el plan. El `.json` de letra reparte las líneas uniformemente; afinar tiempos a mano si hace falta.
 5. **Tiendas**: Bubblewrap (Play) y Capacitor (iOS). Requiere cuenta de desarrollador de Junior (25 USD Google, 99 USD/año Apple).
