@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOOLS = os.path.join(ROOT, 'tools'); PY = sys.executable
 ap = argparse.ArgumentParser(description='Audio de Leo y Aprendo con ElevenLabs')
 ap.add_argument('paso', choices=['check', 'prueba', 'voces-es', 'voces-en', 'sonidos', 'canciones', 'publicar', 'todo'])
-ap.add_argument('--voz-es', default='Daniela'); ap.add_argument('--voz-en', default=None)
+ap.add_argument('--voz-es', default='Daniela - Tender', help='voz de Mis Voces (nombre o ID); por defecto "Daniela - Tender, Young, Joyful", la de personajes infantiles'); ap.add_argument('--voz-en', default=None)
 ap.add_argument('--si', action='store_true', help='no preguntar antes de gastar créditos')
 args = ap.parse_args()
 
@@ -63,8 +63,9 @@ def check():
     sub = get('/user/subscription'); used, lim = sub.get('character_count', 0), sub.get('character_limit', 0)
     print(f"Plan: {sub.get('tier')} · créditos usados {used:,} de {lim:,} · quedan {lim - used:,}")
     voces = get('/voices')['voices']; names = [v['name'] for v in voces]
-    dan = [v for v in voces if v['name'].strip().lower() == args.voz_es.lower()]
-    print(f"Voz ES '{args.voz_es}': " + (f"OK ({dan[0]['voice_id']})" if dan else f"NO está en tu cuenta. Tus voces: {', '.join(names)}"))
+    q = args.voz_es.lower(); dan = [v for v in voces if v['name'].strip().lower() == q] or [v for v in voces if q in v['name'].lower()]
+    otras = [v['name'] for v in voces if 'daniela' in v['name'].lower() and v not in dan]
+    print(f"Voz ES '{args.voz_es}': " + (f"OK → {dan[0]['name']} ({dan[0]['voice_id']})" if dan else f"NO está en Mis Voces. Añádela: elevenlabs.io → Voces → Explorar → buscar \"{args.voz_es}\" → ⊕ Añadir a Mis Voces." + (f" Otras Daniela que sí tienes: {', '.join(otras)} (úsala con --voz-es \"nombre\")" if otras else '')))
     if args.voz_en: en = [v for v in voces if v['name'].strip().lower() == args.voz_en.lower() or v['voice_id'] == args.voz_en]; print(f"Voz EN '{args.voz_en}': " + ('OK' if en else 'NO encontrada'))
     mc = manifest_chars()
     for L in ('es', 'en'): print(f"[{L}] {mc[L][0]} frases, {mc[L][1]} por generar, {mc[L][2]:,} caracteres")

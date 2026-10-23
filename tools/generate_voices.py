@@ -51,9 +51,11 @@ def resolve_voice(name_or_id):
     """Acepta un voice_id (20 caracteres alfanuméricos) o un nombre, sin distinguir mayúsculas."""
     if not name_or_id: return None
     if re.fullmatch(r'[A-Za-z0-9]{15,}', name_or_id): return name_or_id
-    vs = list_voices(); hit = [v for v in vs if v['name'].strip().lower() == name_or_id.strip().lower()]
-    if not hit: sys.exit(f'No encuentro una voz llamada "{name_or_id}". Voces disponibles: ' + ', '.join(v['name'] for v in vs))
-    return hit[0]['voice_id']
+    vs = list_voices(); q = name_or_id.strip().lower()
+    hit = [v for v in vs if v['name'].strip().lower() == q] or [v for v in vs if v['name'].strip().lower().startswith(q)] or [v for v in vs if q in v['name'].lower()]
+    if not hit: sys.exit(f'No encuentro una voz llamada "{name_or_id}" en Mis Voces. Tienes: ' + ', '.join(v['name'] for v in vs) + '. Añádela desde la biblioteca (Voces → Explorar → Añadir).')
+    if len(hit) > 1: print(f'  Varias voces coinciden con "{name_or_id}"; uso "{hit[0]["name"]}". Otras: ' + ', '.join(v['name'] for v in hit[1:]))
+    print(f'  Voz: {hit[0]["name"]} ({hit[0]["voice_id"]})'); return hit[0]['voice_id']
 
 if args.list:
     if not key: sys.exit('Falta ELEVEN_API_KEY')
