@@ -35,7 +35,11 @@ for (const L of ['es', 'en']) {
   t.wordCats.flatMap(c => c[2]).forEach(w => add(fmt(s.startsDiff, { w: w[0], L: w[0][0] })));
   // Frases y cuentos: la frase entera y cada palabra
   t.phrases.forEach(p => { add(p[0]); p[0].split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); });
-  t.stories.forEach(st => { add(st.title); st.pages.forEach(pg => { add(pg[0]); pg[0].split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); }); add(st.q[0]); st.q[1].forEach(o => add(o[0])); });
+  t.stories.forEach(st => { add(st.title); st.pages.forEach(pg => { add(pg[0]); pg[0].split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); }); (st.qs || [st.q]).forEach(q => { add(q[0]); q[1].forEach(o => add(o[0])); }); });
+  add(u.theEnd);
+  // Emociones
+  (t.emotions || []).forEach(e => { add(e[0]); add(e[2]); add(fmt(s.emoIs, { e: e[0] })); add(fmt(s.emoAsk, { e: e[0] })); add(fmt(s.feelIs, { e: e[0] })); });
+  (t.feelings || []).forEach(f => add(f[0])); if (s.breathe) { add(s.breathe); add(s.gFeel.split('.').slice(1).join('.')); }
   // Números: palabras, dígitos, "este es el", "hay N cosas"
   u.numbers.forEach((w, i) => { add(w); add(String(i + 1)); add(fmt(s.numberIs, { n: w })); (t.countThings || []).forEach(th => add(fmt(s.allCounted, { n: w, things: th[0] }))); });
   (t.countThings || []).forEach(th => add(th[0]));

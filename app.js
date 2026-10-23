@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v21';
+const APP_VERSION = 'v22';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -174,7 +174,7 @@ function topbar(title) { return `<div class="topbar"><button class="back" type="
 function wire() { $$('[data-home]', main).forEach(b => b.onclick = () => { Voice.stop(); home(); }); }
 function setHeader() { $('#langBtn').textContent = '🌎 ' + T().toggle; $('#starCount').textContent = stars(); $('#profileBtn').textContent = P ? P.avatar : '🕊️'; document.documentElement.lang = settings.lang; }
 function levelStars(i) {
-  if (!P) return 0; const d = P.done, L = settings.lang, pre = ['vowel:', 'letter:', 'syl:', 'word:', 'phrase:', 'story:', 'trace:', 'game:', 'num:', 'color:', 'math:'][i];
+  if (!P) return 0; const d = P.done, L = settings.lang, pre = ['vowel:', 'letter:', 'syl:', 'word:', 'phrase:', 'story:', 'trace:', 'game:', 'num:', 'color:', 'math:', 'emo:'][i];
   return Object.keys(d).filter(k => k.startsWith(pre) && (pre === 'trace:' || k.includes(':' + L + ':'))).length;
 }
 
@@ -219,7 +219,7 @@ function home() { if (window._pendingReload) { location.reload(); return; } Diag
     <button class="door review ${reviewDoneToday() ? 'donetoday' : ''}" type="button" id="reviewBtn"><span class="big">${reviewDoneToday() ? '✅' : '🎯'}</span>${esc(u.reviewT)}<small>${reviewDoneToday() ? esc(u.reviewDone) : esc(u.reviewSub)}</small><span class="lvstars">🔥 ${P.streak || 0}</span></button>
     <div class="home">${u.levels.map((d, i) => `<button class="door d${i + 1}" type="button" data-go="${i}"><span class="lvstars">⭐ ${levelStars(i)}</span><span class="big">${d[2]}</span>${esc(d[0])}<small>${esc(d[1])}</small></button>`).join('')}</div>
   </section>`;
-  $$('[data-go]', main).forEach(b => b.onclick = () => { Sfx.tap(); [vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, numbersScreen, colorsScreen, mathScreen][+b.dataset.go](); });
+  $$('[data-go]', main).forEach(b => b.onclick = () => { Sfx.tap(); [vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, numbersScreen, colorsScreen, mathScreen, emotionsScreen][+b.dataset.go](); });
   $('#reviewBtn').onclick = () => { Sfx.tap(); reviewGame(); };
   const greeting = fmt(u.hello, { name: P.name }) + ' ' + S().home;
   const sayGreeting = () => { $('#guideText').textContent = greeting; Voice.seq([settings.lang === 'es' ? '¡Hola!' : 'Hi!', 150, P.name, 400, S().home]); };
@@ -381,10 +381,13 @@ function phrasesScreen() { Diag.crumb('phrasesScreen');
 /* ---------- 6. stories ---------- */
 function storiesScreen() { Diag.crumb('storiesScreen');
   const t = T(), u = U(), L = settings.lang;
+  const card = (s, k) => `<button class="tile storycard ${has('story:' + L + ':' + k) ? 'done' : ''}" type="button" data-k="${k}"><span class="pic">${s.cover}</span><span class="lbl">${esc(s.title)}</span></button>`;
   main.innerHTML = `<section class="screen">${topbar(u.storiesT)}${guideHtml(S().stories)}
-    <div class="grid wide">${t.stories.map((s, k) => `<button class="tile storycard ${has('story:' + L + ':' + k) ? 'done' : ''}" type="button" data-k="${k}"><span class="pic">${s.cover}</span><span class="lbl">${esc(s.title)}</span></button>`).join('')}</div>
+    <div class="grid wide" id="shortS">${t.stories.map((s, k) => s.long ? '' : card(s, k)).join('')}</div>
+    <p class="prompt">📚 ${esc(u.longT)}</p>
+    <div class="grid wide" id="longS">${t.stories.map((s, k) => s.long ? card(s, k) : '').join('')}</div>
   </section>`;
-  $$('[data-k]', main).forEach(b => b.onclick = () => { Sfx.tap(); storyScreen(+b.dataset.k); }); bigOpts(main, '.grid', 2);
+  $$('[data-k]', main).forEach(b => b.onclick = () => { Sfx.tap(); storyScreen(+b.dataset.k); }); bigOpts(main, '#shortS', 2); bigOpts(main, '#longS', 2);
   wire(); guideSay(S().stories);
 }
 function storyScreen(k) { Diag.crumb('story:' + k);
@@ -402,11 +405,15 @@ function storyScreen(k) { Diag.crumb('story:' + k);
       $('#next').textContent = '➡️'; if (first) { first = false; Voice.seq([s.title, 700], read); } else read(); }
     else quiz(); }
   function read() { if (pg < n) { Voice.stop(); setTimeout(() => readAlong($('#sent'), s.pages[pg][0], () => { if (pg === n - 1) return; setTimeout(() => { $('#next').classList.add('pulse'); }, 600); }), 100); } }
-  function quiz() { const q = s.q; const opts = q[1].map((o, i) => [o, i]);
-    $('#stage').innerHTML = `<div class="sub">${esc(u.question)}</div><div class="word" style="font-size:1.5rem;letter-spacing:0">${esc(q[0])}</div>
+  const qs = s.qs || [s.q]; let qi = 0;
+  function quiz() { const q = qs[qi]; const opts = q[1].map((o, i) => [o, i]); const last = qi === qs.length - 1;
+    $('#stage').innerHTML = `<div class="sub">${esc(u.question)} ${qs.length > 1 ? (qi + 1) + '/' + qs.length : ''}</div><div class="word" style="font-size:1.5rem;letter-spacing:0">${esc(q[0])}</div>
       <div class="grid" style="width:100%">${shuffle(opts).map(o => `<button class="tile" type="button" data-i="${o[1]}"><span class="pic">${o[0][1]}</span><span class="lbl">${esc(o[0][0])}</span></button>`).join('')}</div>`;
-    bigOpts($('#stage'), '.grid'); Voice.seq([q[0], 900, q[0]]); $('#next').textContent = '🏠';
-    $$('[data-i]', main).forEach(b => b.onclick = () => { if (+b.dataset.i === q[2]) { b.classList.add('good'); Sfx.good(); hit('story:' + k); confetti(); $('#fb').textContent = u.theEnd; Voice.say(cheer()); award(3, 'story:' + L + ':' + k); $('#next').onclick = home; } else { b.classList.add('bad'); Sfx.bad(); miss('story:' + k); $('#fb').textContent = u.bad; setTimeout(() => b.classList.remove('bad'), 400); const ok = $$('[data-i]', main).find(x => +x.dataset.i === q[2]); Voice.seq([u.bad, 600, q[0]]); setTimeout(() => ok.classList.add('pulse'), 1500); } }); }
+    bigOpts($('#stage'), '.grid'); Voice.seq([q[0], 900, q[0]]); $('#next').textContent = last ? '🏠' : '➡️'; $('#next').onclick = () => { if (last) home(); else { qi++; quiz(); } };
+    $$('[data-i]', main).forEach(b => b.onclick = () => { if (+b.dataset.i === q[2]) { b.classList.add('good'); Sfx.good(); hit('story:' + k); confetti(); $('#stage').style.pointerEvents = 'none';
+        if (last) { $('#fb').textContent = u.theEnd; award(3, 'story:' + L + ':' + k); Voice.seq([cheer(), 500, u.theEnd]); }
+        else { award(1); Voice.seq([cheer(), 600], () => { if (document.contains($('#stage'))) { $('#stage').style.pointerEvents = ''; qi++; quiz(); } }); } }
+      else { b.classList.add('bad'); Sfx.bad(); miss('story:' + k); $('#fb').textContent = u.bad; setTimeout(() => b.classList.remove('bad'), 400); const ok = $$('[data-i]', main).find(x => +x.dataset.i === q[2]); Voice.seq([u.bad, 600, q[0]]); setTimeout(() => ok.classList.add('pulse'), 1500); } }); }
   $('#read').onclick = read; $('#next').onclick = () => { Sfx.tap(); $('#next').classList.remove('pulse'); if (pg < n) { pg++; show(); } else home(); }; $('#prev').onclick = () => { Sfx.tap(); if (pg > 0) { pg--; show(); } };
   let first = true; wire(); show();
 }
@@ -458,7 +465,7 @@ function gamesScreen() { Diag.crumb('gamesScreen');
   main.innerHTML = `<section class="screen">${topbar(u.gamesT)}
     ${guideHtml(S().games)}
     <div class="home">${u.games.map((g, i) => `<button class="door d${(i % 8) + 1}" type="button" data-g="${i}"><span class="big">${g[2]}</span>${esc(g[0])}<small>${esc(g[1])}</small></button>`).join('')}</div></section>`;
-  $$('[data-g]', main).forEach(b => b.onclick = () => { Sfx.tap(); [gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, gameCount, gameTapNum, gameColor, gameShape, gameAdd, gameSub][+b.dataset.g](); });
+  $$('[data-g]', main).forEach(b => b.onclick = () => { Sfx.tap(); [gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, gameCount, gameTapNum, gameColor, gameShape, gameAdd, gameSub, gameFeel][+b.dataset.g](); });
   wire(); guideSay(S().games);
 }
 let roundWatch = null;
@@ -659,11 +666,11 @@ function reviewPlan() {
   const weak = Object.keys(e).filter(k => e[k] > 0).sort((a, b) => e[b] - e[a]);
   const stale = Object.keys(seen).filter(k => now - seen[k] > old && !weak.includes(k)).sort(() => Math.random() - .5);
   const keys = weak.slice(0, 4).concat(stale.slice(0, 4));
-  const map = { vowel: ['gameVowel', k => T().vowels.findIndex(v => v[0] === k)], word: ['gameWord', k => k], letter: ['gameFirst', k => k], missing: ['gameMissing', k => k], build: ['gameBuild', k => k], rhyme: ['gameRhyme', k => null], clap: ['gameClap', k => null], odd: ['gameOdd', k => null], num: ['gameCount', k => k], color: ['gameColor', k => k], math: [null, k => null] };
+  const map = { vowel: ['gameVowel', k => T().vowels.findIndex(v => v[0] === k)], word: ['gameWord', k => k], letter: ['gameFirst', k => k], missing: ['gameMissing', k => k], build: ['gameBuild', k => k], rhyme: ['gameRhyme', k => null], clap: ['gameClap', k => null], odd: ['gameOdd', k => null], num: ['gameCount', k => k], color: ['gameColor', k => k], math: [null, k => null], emo: ['gameFeel', k => null] };
   const segs = []; const used = new Set();
   keys.forEach(key => { const [kind, id] = key.split(/:(.+)/); let m = map[kind]; if (kind === 'math') m = [id.includes('+') ? 'gameAdd' : 'gameSub', () => null]; if (m && m[0] && !used.has(m[0])) { used.add(m[0]); segs.push({ fn: m[0], focus: m[1](id) }); } });
   // Rellena hasta 4 segmentos con juegos variados (siempre hay repaso, aunque no haya fallos todavía)
-  ['gameVowel', 'gameFirst', 'gameRhyme', 'gameCount', 'gameWord', 'gameClap', 'gameMissing', 'gameOdd', 'gameTapNum', 'gameColor', 'gameShape', 'gameAdd', 'gameSub'].forEach(fn => { if (segs.length < 4 && !used.has(fn)) { used.add(fn); segs.push({ fn, focus: null }); } });
+  ['gameVowel', 'gameFirst', 'gameRhyme', 'gameCount', 'gameWord', 'gameClap', 'gameMissing', 'gameOdd', 'gameTapNum', 'gameColor', 'gameShape', 'gameAdd', 'gameSub', 'gameFeel'].forEach(fn => { if (segs.length < 4 && !used.has(fn)) { used.add(fn); segs.push({ fn, focus: null }); } });
   return segs.slice(0, 4);
 }
 const GAME_FNS = {};
@@ -796,6 +803,34 @@ function gameAdd(focus, opts) { Diag.crumb('gameAdd'); mathGame('add', focus, op
 function gameSub(focus, opts) { Diag.crumb('gameSub'); mathGame('sub', focus, opts); }
 Object.assign(GAME_FNS, { gameAdd, gameSub });
 
+/* ---------- Emociones: reconocerlas, nombrarlas y un respiro para calmarse ---------- */
+function emotionsScreen() { Diag.crumb('emotionsScreen');
+  const t = T(), u = U(), s = S(), L = settings.lang;
+  main.innerHTML = `<section class="screen">${topbar(u.emoT)}${guideHtml(s.emotions)}
+    <div class="grid" id="emogrid">${t.emotions.map((e, i) => `<button class="tile keep ${has('emo:' + L + ':' + e[0]) ? 'done' : ''}" type="button" data-e="${i}" style="--cube:var(--card)"><span class="pic" style="font-size:3.4rem">${e[1]}</span><span class="lbl" style="color:var(--fg)">${esc(caseIt(e[0]))}</span></button>`).join('')}</div>
+    <div class="stage" id="stage" hidden></div></section>`;
+  bigOpts(main, '#emogrid', 2);
+  $$('#emogrid .tile').forEach(b => b.onclick = () => { const e = t.emotions[+b.dataset.e]; Sfx.tap(); const st = $('#stage'); st.hidden = false; award(1, 'emo:' + L + ':' + e[0]); b.classList.add('done');
+    st.innerHTML = `<div class="pic" style="font-size:6rem">${e[1]}</div><div class="word">${esc(caseIt(e[0]))}</div><div class="sub" style="font-size:1.1rem">${esc(e[2])}</div>
+      <div class="row"><button class="btn big icon" id="say" type="button">🔊</button>${e[0] === t.emotions[6][0] ? `<button class="btn alt icon" id="breathe" type="button" aria-label="${esc(s.breathe)}">🫧</button>` : ''}</div>`;
+    const parts = [fmt(s.emoIs, { e: e[0] }), 500, e[2], 700, fmt(s.emoAsk, { e: e[0] })]; $('#guideText').textContent = fmt(s.emoAsk, { e: e[0] }); Voice.seq(parts); $('#say').onclick = () => Voice.seq(parts);
+    const br = $('#breathe'); if (br) br.onclick = () => { const pic = st.querySelector('.pic'); pic.style.transition = 'transform 3s ease-in-out'; Voice.seq([s.breathe]); pic.style.transform = 'scale(1.5)'; setTimeout(() => pic.style.transform = 'scale(1)', 3200); };
+    st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+  wire(); guideSay(s.emotions);
+}
+function gameFeel(focus, opts) { Diag.crumb('gameFeel'); opts = opts || {};
+  const t = T(), u = U(), s = S(); const sh = gameShell(u.games[15][0], opts, 6); let r = 0, won = 0; const L = level('feel'); const nOpts = [3, 4, 6][L - 1]; const items = pick(t.feelings, 6);
+  function round() { if (r === sh.n) { done(sh, won, () => gameFeel(focus), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const [text, pic, ans] = items[r]; const ansE = t.emotions.find(e => e[0] === ans); let tries = 0; firstSeen('emo:' + ans);
+    const optsE = shuffle([ansE].concat(pick(t.emotions.filter(e => e !== ansE), nOpts - 1)));
+    sh.area.innerHTML = `<div class="stage"><div class="pic" style="font-size:4rem">${pic.slice(0, pic.length - 2)}</div><div class="word" style="font-size:1.5rem;letter-spacing:0">${esc(text)}</div><button class="btn big icon" id="hear" type="button">🔊</button></div>
+      <div class="grid">${optsE.map(e => `<button class="tile keep" type="button" data-e="${esc(e[0])}" style="--cube:var(--card)"><span class="pic">${e[1]}</span>${L < 3 ? `<span class="lbl" style="color:var(--fg)">${esc(caseIt(e[0]))}</span>` : ''}</button>`).join('')}</div>`;
+    bigOpts(sh.area); const hear = () => Voice.seq([text, 600, s.gFeel.split('.').slice(1).join('.')]); $('#hear').onclick = hear; askOnce(opts, r, s.gFeel, hear);
+    $$('[data-e]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.e === ans) { if (tries === 0) hit('emo:' + ans); adapt('feel', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.feelIs, { e: ans }), 300]); if (tries === 0) won++; } else { tries++; miss('emo:' + ans); if (tries === 1) adapt('feel', false); wrong(sh, b, hear, tries, `[data-e="${ans}"]`); } }); }
+  $('#guideText').textContent = s.gFeel; round();
+}
+Object.assign(GAME_FNS, { gameFeel });
+
 /* ---------- parents ---------- */
 function parentsScreen() { Diag.crumb('parentsScreen');
   const u = U(); const a = 3 + Math.floor(Math.random() * 6), b = 2 + Math.floor(Math.random() * 7);
@@ -806,12 +841,12 @@ function parentsScreen() { Diag.crumb('parentsScreen');
 }
 function parentsPanel() { Diag.crumb('parentsPanel');
   const t = T(), u = U(); const L = settings.lang; const lv = u.levels;
-  const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, 27, 10, 20, t.colors.length + t.shapes.length, 20];
+  const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, 27, 10, 20, t.colors.length + t.shapes.length, 20, t.emotions.length];
   const vs = Voice.voices.filter(v => (v.lang || '').toLowerCase().startsWith(T().code));
   main.innerHTML = `<section class="screen">${topbar(u.parentsT)}
     <div class="card"><h3>${esc(u.progress)} · ${P.avatar} ${esc(P.name)} · ⭐ ${P.stars}</h3>
       <div class="bars">${lv.map((l, i) => { const n = Math.min(levelStars(i), totals[i]); return `<div class="bar"><span>${l[2]} ${esc(l[0])}</span><div class="progress"><i style="width:${n / totals[i] * 100}%"></i></div><em>${n}/${totals[i]}</em></div>`; }).join('')}</div></div>
-    <div class="card"><h3>${esc(u.levelsT)}</h3><div class="badgerow">${['vowel', 'word', 'build', 'first', 'missing', 'rhyme', 'clap', 'odd', 'count', 'tapnum', 'color', 'shape', 'add', 'sub'].map((g, i) => `<span class="badge on">${esc(u.games[[0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14][i]][0])}: ${level(g)}/3</span>`).join('')}</div><small style="color:var(--muted)">${esc(u.levelsHelp)} · 🔥 ${P.streak || 0} · ${esc(u.reviewsN)}: ${P.reviews || 0}</small></div>
+    <div class="card"><h3>${esc(u.levelsT)}</h3><div class="badgerow">${['vowel', 'word', 'build', 'first', 'missing', 'rhyme', 'clap', 'odd', 'count', 'tapnum', 'color', 'shape', 'add', 'sub', 'feel'].map((g, i) => `<span class="badge on">${esc(u.games[[0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15][i]][0])}: ${level(g)}/3</span>`).join('')}</div><small style="color:var(--muted)">${esc(u.levelsHelp)} · 🔥 ${P.streak || 0} · ${esc(u.reviewsN)}: ${P.reviews || 0}</small></div>
     <div class="card"><h3>${esc(u.weakT)}</h3>${weakList()}</div>
     <div class="card"><h3>${esc(u.badges)}</h3><div class="badgerow">${BADGES.map(b => `<span class="badge ${P.badges && P.badges[b] ? 'on' : ''}">🏅 ${esc(u.badgeNames[b])}</span>`).join('')}</div></div>
     <div class="card"><h3>${esc(u.settings)}</h3>
@@ -854,7 +889,7 @@ function itemLabel(key) { const t = T(); const [kind, id] = key.split(/:(.+)/); 
     case 'missing': { const m = find(t.missing); return [U().games[5][0], m ? id + ' ' + m[1] : id]; }
     case 'trace': return [lv[6][0], id];
     case 'story': { const st = t.stories[+id]; return [lv[5][0], st ? st.title + ' ' + st.cover : id]; }
-    case 'num': return [U().games[9][0], id]; case 'color': return [U().games[11][0], id]; case 'math': return [U().games[id.includes('+') ? 13 : 14][0], id.replace('-', ' − ').replace('+', ' + ')]; case 'rhyme': return [U().games[6][0], id]; case 'clap': { const c = t.claps.find(x => x[0] === id); return [U().games[7][0], c ? id + ' ' + c[1] : id]; } case 'odd': return [U().games[8][0], id];
+    case 'num': return [U().games[9][0], id]; case 'color': return [U().games[11][0], id]; case 'math': return [U().games[id.includes('+') ? 13 : 14][0], id.replace('-', ' − ').replace('+', ' + ')]; case 'emo': return [U().games[15][0], id]; case 'rhyme': return [U().games[6][0], id]; case 'clap': { const c = t.claps.find(x => x[0] === id); return [U().games[7][0], c ? id + ' ' + c[1] : id]; } case 'odd': return [U().games[8][0], id];
     default: return [kind, id]; } }
 function weakList() { const e = (P && P.errors) || {}, h = (P && P.hits) || {};
   const rows = Object.keys(e).map(k => ({ k, e: e[k], h: h[k] || 0 })).filter(r => r.e > 0).sort((a, b) => (b.e / (b.e + b.h)) - (a.e / (a.e + a.h)) || b.e - a.e).slice(0, 10);
@@ -864,7 +899,7 @@ function weakList() { const e = (P && P.errors) || {}, h = (P && P.hits) || {};
 function practice(key) { const [kind, id] = key.split(/:(.+)/); const t = T(); Voice.stop();
   switch (kind) { case 'vowel': gameVowel(t.vowels.findIndex(v => v[0] === id)); break; case 'letter': gameFirst(id); break; case 'word': gameWord(id); break;
     case 'build': gameBuild(id); break; case 'missing': gameMissing(id); break; case 'trace': traceScreen(id); break; case 'story': storyScreen(+id); break;
-    case 'rhyme': gameRhyme(); break; case 'clap': gameClap(); break; case 'odd': gameOdd(); break; case 'num': gameCount(id); break; case 'color': { if (T().shapes.find(x => x[0] === id)) gameShape(id); else gameColor(id); break; } case 'math': { if (id.includes('+')) gameAdd(); else gameSub(); break; } default: home(); } }
+    case 'rhyme': gameRhyme(); break; case 'clap': gameClap(); break; case 'odd': gameOdd(); break; case 'num': gameCount(id); break; case 'color': { if (T().shapes.find(x => x[0] === id)) gameShape(id); else gameColor(id); break; } case 'math': { if (id.includes('+')) gameAdd(); else gameSub(); break; } case 'emo': gameFeel(); break; default: home(); } }
 
 /* Pantalla de bienvenida: el primer toque desbloquea el audio del teléfono; después la paloma saluda. */
 function showGate(then) { const g = $('#startGate'); if (!g) { then(); return; } g.hidden = false; $('#startName').textContent = P ? P.name : ''; $('#startText').textContent = U().tapStart;
@@ -885,7 +920,7 @@ Diag.log('session', 'inicio ' + APP_VERSION, { lang: settings.lang });
 Clips.load(); Voice.init();
 P = profiles.find(p => p.id === currentId) || null;
 setHeader();
-function openScreen(name) { const map = { vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, parentsScreen, gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, reviewGame, numbersScreen, gameCount, gameTapNum, colorsScreen, gameColor, gameShape, mathScreen, gameAdd, gameSub };
+function openScreen(name) { const map = { vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, parentsScreen, gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, reviewGame, numbersScreen, gameCount, gameTapNum, colorsScreen, gameColor, gameShape, mathScreen, gameAdd, gameSub, emotionsScreen, gameFeel };
   if (name && name.startsWith('story:')) { const k = +name.slice(6); if (T().stories[k]) { storyScreen(k); return true; } }
   if (map[name]) { map[name](); return true; } return false; }
 let last = null; try { last = sessionStorage.getItem('lya:last'); } catch (e) {}
