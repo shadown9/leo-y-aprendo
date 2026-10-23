@@ -47,6 +47,8 @@ const Voice = {
     const chosen = settings.voice[code];
     if (chosen) { const v = this.voices.find(v => v.voiceURI === chosen); if (v) return v; }
     const list = this.voices.filter(v => (v.lang || '').toLowerCase().replace('_', '-').startsWith(code));
+    const pref = code === 'es' ? ['es-us', 'es-mx', 'es-419', 'es-do', 'es-co', 'es-ar', 'es-cl', 'es-pe'] : ['en-us', 'en-gb'];
+    for (const tag of pref) { const v = list.find(v => v.lang.toLowerCase().replace('_', '-') === tag && /natural|enhanced|premium|neural/i.test(v.name)) || list.find(v => v.lang.toLowerCase().replace('_', '-') === tag); if (v) return v; }
     return list.find(v => v.lang.toLowerCase().replace('_', '-') === want && /natural|enhanced|premium|neural/i.test(v.name))
       || list.find(v => v.lang.toLowerCase().replace('_', '-') === want)
       || list.find(v => /natural|enhanced|premium|neural/i.test(v.name)) || list[0] || null;
@@ -225,8 +227,8 @@ function lettersScreen() {
     st.innerHTML = `<button class="letter big-tap" id="bigL" type="button" ${'AEIOU'.includes(l[0].toUpperCase()) ? `style="color:${vcolor(l[0])}"` : ''}>${l[0].toUpperCase()} ${l[0]}</button><div class="pic" id="pic">${l[2]}</div><div class="word" id="wd">${hi}</div>
       <div class="row"><button class="btn big icon" id="say" type="button" aria-label="${esc(u.listen)}">🔊</button><button class="btn alt icon" id="tr" type="button" aria-label="${esc(u.traceT)}">✏️</button></div>`;
     // Ciencia de la lectura: primero el SONIDO (dos veces, despacio), luego el nombre, luego la palabra que empieza con él.
-    const parts = [fmt(S().letterIs, { name }), 600];
-    if (snd) parts.push({ t: snd, rate: .55 }, 700, { t: snd, rate: .55 }, 900);
+    const parts = [fmt(S().letterIs, { name }), 500, { t: name, rate: .6 }, 700];
+    if (snd) parts.push(S().soundsLike, 400, { t: snd, rate: .55 }, 700, { t: snd, rate: .55 }, 900);
     parts.push(fmt(S().ofWord, { L: name, w }), 800, { t: w, rate: .65 });
     $('#guideText').textContent = fmt(S().ofWord, { L: name, w }); Voice.seq(parts); award(1, 'letter:' + L + ':' + l[0]); b.classList.add('done');
     $('#say').onclick = () => Voice.seq(parts); $('#bigL').onclick = () => Voice.seq([{ t: snd || name, rate: .55 }, 500, name]); $('#pic').onclick = () => Voice.seq([{ t: w, rate: .65 }]);
@@ -382,7 +384,9 @@ function traceScreen(startLetter) {
       if (g[i] > 128) { tot++; if (ink) hit++; } else if (ink) outside++; }
     return { cov: tot ? hit / tot : 0, outside: inkTotal ? outside / inkTotal : 0 }; }
   $('#done').onclick = () => { const r = coverage();
-    if (r.cov > .35 && r.outside < .6) { $('#fb').textContent = cheer(); Sfx.good(); confetti(); Voice.seq([cheer(), 600, { t: L, rate: .6 }]); award(2, 'trace:' + L); }
+    if (r.cov > .35 && r.outside < .6) { $('#fb').textContent = cheer(); Sfx.good(); confetti(); award(1, 'trace:' + L + (upper ? '' : ':min'));
+      if (upper) { Voice.seq([cheer(), 700, S().nowLower, 400], () => { upper = false; draw(); Voice.seq([{ t: L, rate: .6 }]); }); }
+      else { const idx = letters.indexOf(L); Voice.seq([cheer(), 700, S().next, 300], () => { L = letters[(idx + 1) % letters.length]; upper = true; draw(); Voice.seq([{ t: L, rate: .6 }]); $$('#lchips .chip').find(b => b.dataset.l === L).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }); } }
     else { $('#fb').textContent = u.bad; Sfx.bad(); Voice.seq([u.bad, 500, S().trace]); } };
   $('#clear').onclick = () => { Sfx.tap(); draw(); }; $('#say').onclick = () => Voice.say(L);
   $('#caseU').onclick = () => { upper = true; draw(); }; $('#caseL').onclick = () => { upper = false; draw(); };
@@ -405,9 +409,13 @@ function roundShell(title, n) {
 }
 function finish(sh, won, replay) {
   sh.bar.style.width = '100%'; P.games = (P.games || 0) + 1; saveProfiles(); mark('game:' + settings.lang + ':' + (P.games)); checkBadges();
-  sh.area.innerHTML = `<div class="stage"><div class="pic">🏆</div><div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(U().done, { n: won }))}</div>
+  sh.area.innerHTML = `<div class="stage"><div class="pic">🏆</div><div class="starrow" id="starrow"></div><div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(U().done, { n: won }))}</div>
     <div class="row"><button class="btn big icon" id="again" type="button" aria-label="${esc(U().again)}">🔁</button><button class="btn alt icon" id="hm" type="button" aria-label="${esc(U().home)}">🏠</button></div></div>`;
-  sh.fb.textContent = ''; confetti(); Voice.seq([fmt(U().done, { n: won })]); $('#hm').onclick = home; $('#again').onclick = replay;
+  sh.fb.textContent = ''; confetti();
+  // Las estrellas aparecen una por una, contándolas en voz alta, para que el niño las VEA.
+  const row = $('#starrow'); const nums = U().numbers; let k = 0;
+  const pop = () => { if (!document.contains(row)) return; if (k < won) { const st = document.createElement('span'); st.textContent = '⭐'; row.appendChild(st); Sfx.tone(600 + k * 60, 0, .2); k++; Voice.seq([{ t: nums[Math.min(k, nums.length) - 1], rate: .9 }], () => setTimeout(pop, 250)); } else Voice.seq([400, fmt(U().done, { n: won })]); };
+  setTimeout(pop, 500); $('#hm').onclick = home; $('#again').onclick = replay;
 }
 function correct(sh, b, n, after) { b.classList.add('good'); Sfx.good(); sh.fb.textContent = cheer(); if (n) award(n); confetti(); setTimeout(() => { if (document.contains(sh.area)) after(); }, 1300); }
 function wrong(sh, b, retry, tries, okSel) { b.classList.add('bad'); Sfx.bad(); sh.fb.textContent = U().bad; setTimeout(() => b.classList.remove('bad'), 400);
@@ -437,15 +445,17 @@ function gameBuild() {
   const t = T(), u = U(); const sh = roundShell(u.games[2][0], 6); let r = 0, won = 0; const items = pick(t.build, 6);
   function round() { if (r === sh.n) { finish(sh, won, gameBuild); return; }
     sh.bar.style.width = (r / sh.n * 100) + '%'; const it = items[r], parts = it.slice(0, -1), pic = it[it.length - 1], word = parts.join(''); let placed = [], bad = false;
-    let order = shuffle(parts.map((p, i) => i)); if (order.join() === parts.map((p, i) => i).join()) order.reverse();
-    sh.area.innerHTML = `<div class="stage"><div class="pic">${pic}</div><button class="btn" id="hear" type="button">🔊 ${esc(u.listen)}</button>
-      <div class="slots">${parts.map(() => `<div class="slot"></div>`).join('')}</div>
-      <div class="pieces">${order.map(i => `<button class="piece" type="button" data-i="${i}">${esc(caseIt(parts[i]))}</button>`).join('')}</div></div>`;
+    // Pieza extra que NO va (así no se puede resolver por patrón sin leer) y orden realmente aleatorio, nunca el correcto.
+    const pool = t.build.filter(x => x !== it).flatMap(x => x.slice(0, -1)).filter(x => !parts.includes(x)); const extra = pool[Math.floor(Math.random() * pool.length)];
+    const all = parts.map((p, i) => i).concat([-1]); let order; do { order = shuffle(all); } while (order.slice(0, parts.length).join() === parts.map((p, i) => i).join());
+    sh.area.innerHTML = `<div class="stage"><div class="pic">${pic}</div><button class="btn big icon" id="hear" type="button" aria-label="${esc(u.listen)}">🔊</button>
+      <div class="slots">${parts.map(() => `<div class="slot jig"></div>`).join('')}</div>
+      <div class="pieces">${order.map(i => `<button class="piece jig" type="button" data-i="${i}">${esc(caseIt(i < 0 ? extra : parts[i]))}</button>`).join('')}</div></div>`;
     const hear = () => Voice.seq([{ t: word, rate: .7 }, 600].concat(parts.flatMap(p => [{ t: p, rate: .55 }, 350]), [{ t: word, rate: .8 }])); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gBuild, 600], hear); else setTimeout(hear, 300);
     const slots = $$('.slot', sh.area);
     $$('.piece', sh.area).forEach(b => b.onclick = () => { const i = +b.dataset.i;
       if (i === placed.length) { b.disabled = true; slots[i].textContent = caseIt(parts[i]); slots[i].classList.add('full'); placed.push(i); Voice.say(parts[i], { rate: .7 }); Sfx.tap();
-        if (placed.length === parts.length) { sh.fb.textContent = cheer(); Sfx.good(); setTimeout(() => Voice.say(word + '. ' + cheer()), 400); if (!bad) { award(2); won += 2; } confetti(); setTimeout(() => { if (document.contains(sh.area)) { r++; round(); } }, 1600); } }
+        if (placed.length === parts.length) { sh.fb.textContent = cheer(); Sfx.good(); $$('.slot', sh.area).forEach(x => x.classList.add('good')); Voice.seq([400, { t: word, rate: .7 }, 500, cheer()]); if (!bad) { award(2); won += 2; } confetti(); setTimeout(() => { if (document.contains(sh.area)) { r++; round(); } }, 2600); } }
       else { bad = true; wrong(sh, b, null, 2, `.piece[data-i="${placed.length}"]`); } }); }
   $('#guideText').textContent = S().gBuild; round();
 }
