@@ -1,5 +1,5 @@
 /* Leo y Aprendo — service worker: la app completa funciona sin internet. Sube CACHE_VERSION cuando cambies archivos. */
-const CACHE_VERSION = 'lya-v5';
+const CACHE_VERSION = 'lya-v6';
 const SHELL = ['./', './index.html', './styles.css', './data.js', './app.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/maskable-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

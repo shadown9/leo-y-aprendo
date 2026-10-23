@@ -15,6 +15,22 @@ const store = {
   set(k, v) { try { localStorage.setItem('lya:' + k, JSON.stringify(v)); } catch (e) {} },
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
+/* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
+const APP_VERSION = 'v6';
+const Diag = {
+  max: 300, crumbs: [],
+  log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
+  crumb(name) { this.crumbs.push(name); if (this.crumbs.length > 30) this.crumbs.shift(); },
+  device() { let voices = []; try { voices = speechSynthesis.getVoices().map(v => v.name + ' [' + v.lang + ']' + (v.localService ? '' : ' (online)')); } catch (e) {}
+    return { app: APP_VERSION, ua: navigator.userAgent, lang: navigator.language, standalone: !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches) || !!navigator.standalone, online: navigator.onLine, screen: screen.width + 'x' + screen.height, speech: 'speechSynthesis' in window, voices, settings: { lang: settings.lang, rate: settings.rate, voice: settings.voice } }; },
+  report() { const list = store.get('diag', []); const counts = {}; list.forEach(e => counts[e.type] = (counts[e.type] || 0) + 1);
+    return ['=== Leo y Aprendo — diagnóstico ===', JSON.stringify(this.device(), null, 1), 'Totales: ' + JSON.stringify(counts), '--- últimos eventos (más reciente al final) ---']
+      .concat(list.slice(-80).map(e => `${e.t} [${e.type}] ${e.screen ? '(' + e.screen + ') ' : ''}${e.msg}${e.extra ? ' ' + e.extra : ''}${e.crumbs ? '\n    ← ' + e.crumbs : ''}`)).join('\n'); },
+  clear() { store.del('diag'); },
+};
+window.addEventListener('error', e => Diag.log('js-error', (e.message || 'error') + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+window.addEventListener('unhandledrejection', e => Diag.log('promise', (e.reason && (e.reason.message || e.reason)) || 'rejection'));
+window.LYA = { diag: () => console.log(Diag.report()), diagClear: () => Diag.clear(), version: APP_VERSION };
 let settings = Object.assign({ lang: 'es', rate: 0.8, upper: false, sfx: true, voice: {} }, store.get('settings', {}));
 let profiles = store.get('profiles', []);
 let currentId = store.get('current', null);
@@ -55,22 +71,23 @@ const Voice = {
   },
   say(text, opts) {
     opts = opts || {};
-    if (!this.supported()) { showBanner(U().noVoice); return; }
+    if (!this.supported()) { Diag.log('speech', 'speechSynthesis no soportado'); showBanner(U().noVoice); return; }
     try {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       const v = this.best();
       u.lang = T().bcp; u.rate = opts.rate || settings.rate; u.pitch = 1.1;
-      if (v) u.voice = v; else if (this.voices.length && !this.warned) { this.warned = true; showBanner(U().noVoice); }
+      if (v) u.voice = v; else if (this.voices.length && !this.warned) { this.warned = true; Diag.log('speech', 'sin voz para ' + T().bcp, { voices: this.voices.length }); showBanner(U().noVoice); }
+      else if (!this.voices.length && !this._noVoicesLogged) { this._noVoicesLogged = true; Diag.log('speech', 'lista de voces vacía al hablar'); }
       if (opts.onboundary) u.onboundary = opts.onboundary;
       if (opts.onend) u.onend = opts.onend;
-      u.onerror = () => { if (opts.onend) opts.onend(); };
+      u.onerror = ev => { if (ev && ev.error !== 'interrupted' && ev.error !== 'canceled') Diag.log('speech', 'utterance error: ' + (ev && ev.error), { text: text.slice(0, 40) }); if (opts.onend) opts.onend(); };
       // Chrome on Android sometimes needs resume() after cancel()
       speechSynthesis.speak(u); try { speechSynthesis.resume(); } catch (e) {}
       // if nothing starts within 2.5s, assume a silent engine and tell the parent once
       if (!this.warned) setTimeout(() => { if (!speechSynthesis.speaking && !speechSynthesis.pending && !u._started) {} }, 2500);
       u.onstart = () => { u._started = true; };
-    } catch (e) { showBanner(U().noVoice); }
+    } catch (e) { Diag.log('speech', 'speak() lanzó: ' + e.message); showBanner(U().noVoice); }
   },
   stop() { this._seq++; try { speechSynthesis.cancel(); } catch (e) {} },
   _seq: 0,
@@ -82,8 +99,8 @@ const Voice = {
       if (typeof p === 'number') { setTimeout(step, p); return; }
       const t = typeof p === 'string' ? p : p.t, rate = typeof p === 'string' ? undefined : p.rate;
       if (!this.supported()) { setTimeout(step, 600); return; }
-      let ended = false; const done = () => { if (ended) return; ended = true; setTimeout(step, 120); };
-      this.say(t, { rate, onend: done }); setTimeout(done, 1200 + t.length * 220); };
+      let ended = false, byTimer = true; const done = () => { if (ended) return; ended = true; byTimer = false; setTimeout(step, 120); };
+      this.say(t, { rate, onend: done }); setTimeout(() => { if (!ended) { if (id === this._seq) Diag.log('speech-timeout', 'la voz no avisó que terminó', { text: t.slice(0, 40) }); done(); } }, 1200 + t.length * 220); };
     step();
   },
 };
@@ -139,7 +156,7 @@ function levelStars(i) {
 }
 
 /* ---------- profiles ---------- */
-function profileScreen() {
+function profileScreen() { Diag.crumb('profileScreen');
   const u = U();
   main.innerHTML = `<section class="screen">
     <div class="mascot"><span class="owl">🦉</span><p>${esc(u.welcome)}</p></div>
@@ -149,7 +166,7 @@ function profileScreen() {
   $$('[data-id]', main).forEach(b => b.onclick = () => { Sfx.tap(); selectProfile(b.dataset.id); });
   $('#addProfile').onclick = newProfileScreen;
 }
-function newProfileScreen() {
+function newProfileScreen() { Diag.crumb('newProfileScreen');
   const u = U(); let av = DATA.avatars[Math.floor(Math.random() * DATA.avatars.length)];
   main.innerHTML = `<section class="screen">${topbar(u.newProfile)}
     <div class="stage">
@@ -167,7 +184,7 @@ function newProfileScreen() {
 function selectProfile(id) { P = profiles.find(p => p.id === id) || null; currentId = id; store.set('current', id); setHeader(); home(); }
 
 /* ---------- home ---------- */
-function home() {
+function home() { Diag.crumb('home'); clearTimeout(roundWatch);
   if (!P) { profileScreen(); return; }
   Voice.stop(); const t = T(), u = U();
   main.innerHTML = `<section class="screen">
@@ -184,7 +201,7 @@ function guideSay(text, then) { const g = $('#guideText'); if (g) g.textContent 
 const S = () => U().say;
 
 /* ---------- 1. vowels: lección guiada paso a paso ---------- */
-function vowelsScreen(startAt) {
+function vowelsScreen(startAt) { Diag.crumb('vowelsScreen');
   const t = T(), s = S(); let i = startAt || 0; const L = settings.lang; let waiting = false;
   main.innerHTML = `<section class="screen">${topbar(U().vowelsT)}
     ${guideHtml(s.vowels)}
@@ -219,7 +236,7 @@ function vowelsScreen(startAt) {
 }
 
 /* ---------- 2. letters ---------- */
-function lettersScreen(focus) {
+function lettersScreen(focus) { Diag.crumb('lettersScreen');
   const t = T(), u = U(), L = settings.lang; const all = t.vowels.map(v => [v[0].toLowerCase(), v[1], v[2], v[0]]).concat(t.letters).sort((a, b) => a[0].localeCompare(b[0], 'es'));
   main.innerHTML = `<section class="screen">${topbar(u.lettersT)}${guideHtml(S().letters)}
     <div class="stage" id="stage" hidden></div>
@@ -242,7 +259,7 @@ function lettersScreen(focus) {
 }
 
 /* ---------- 3. syllables ---------- */
-function sylScreen() {
+function sylScreen() { Diag.crumb('sylScreen');
   const t = T(), u = U(), L = settings.lang; let c = t.cons[0]; const vs = ['a', 'e', 'i', 'o', 'u'];
   main.innerHTML = `<section class="screen">${topbar(u.sylT)}${guideHtml(S().syl)}
     <div class="chips" id="cons">${t.cons.map(x => `<button class="chip" type="button" data-c="${x}">${caseIt(x)}</button>`).join('')}</div>
@@ -265,7 +282,7 @@ function sylScreen() {
 }
 
 /* ---------- 4. words ---------- */
-function wordsScreen() {
+function wordsScreen() { Diag.crumb('wordsScreen');
   const t = T(), u = U(), L = settings.lang; let cat = 0;
   main.innerHTML = `<section class="screen">${topbar(u.wordsT)}${guideHtml(S().words)}
     <div class="chips" id="cats">${t.wordCats.map((c, k) => `<button class="chip" type="button" data-k="${k}">${c[1]} ${esc(c[0])}</button>`).join('')}</div>
@@ -306,7 +323,7 @@ function readAlong(container, text, onDone) {
 }
 
 /* ---------- 5. phrases ---------- */
-function phrasesScreen() {
+function phrasesScreen() { Diag.crumb('phrasesScreen');
   const t = T(), u = U(), L = settings.lang; let i = 0;
   main.innerHTML = `<section class="screen">${topbar(u.phrasesT)}${guideHtml(S().phrases)}
     <div class="stage" id="stage"></div>
@@ -324,7 +341,7 @@ function phrasesScreen() {
 }
 
 /* ---------- 6. stories ---------- */
-function storiesScreen() {
+function storiesScreen() { Diag.crumb('storiesScreen');
   const t = T(), u = U(), L = settings.lang;
   main.innerHTML = `<section class="screen">${topbar(u.storiesT)}${guideHtml(S().stories)}
     <div class="grid wide">${t.stories.map((s, k) => `<button class="tile storycard ${has('story:' + L + ':' + k) ? 'done' : ''}" type="button" data-k="${k}"><span class="pic">${s.cover}</span><span class="lbl">${esc(s.title)}</span></button>`).join('')}</div>
@@ -332,7 +349,7 @@ function storiesScreen() {
   $$('[data-k]', main).forEach(b => b.onclick = () => { Sfx.tap(); storyScreen(+b.dataset.k); });
   wire(); guideSay(S().stories);
 }
-function storyScreen(k) {
+function storyScreen(k) { Diag.crumb('story:' + k);
   const t = T(), u = U(), L = settings.lang; const s = t.stories[k]; let pg = 0; const n = s.pages.length;
   main.innerHTML = `<section class="screen">${topbar(s.title)}
     <div class="progress"><i id="bar"></i></div>
@@ -357,7 +374,7 @@ function storyScreen(k) {
 }
 
 /* ---------- 7. trace ---------- */
-function traceScreen(startLetter) {
+function traceScreen(startLetter) { Diag.crumb('traceScreen');
   const t = T(), u = U(); const letters = t.vowels.map(v => v[0]).concat(t.letters.map(l => l[0].toUpperCase())).sort((a, b) => a.localeCompare(b, 'es'));
   let L = startLetter || letters[0], upper = true;
   main.innerHTML = `<section class="screen">${topbar(u.traceT)}
@@ -398,7 +415,7 @@ function traceScreen(startLetter) {
 }
 
 /* ---------- 8. games ---------- */
-function gamesScreen() {
+function gamesScreen() { Diag.crumb('gamesScreen');
   const u = U();
   main.innerHTML = `<section class="screen">${topbar(u.gamesT)}
     ${guideHtml(S().games)}
@@ -406,12 +423,14 @@ function gamesScreen() {
   $$('[data-g]', main).forEach(b => b.onclick = () => { Sfx.tap(); [gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing][+b.dataset.g](); });
   wire(); guideSay(S().games);
 }
+let roundWatch = null;
+function armWatchdog(name) { clearTimeout(roundWatch); const started = Date.now(); roundWatch = setTimeout(() => { if (document.contains(main.querySelector('#area'))) Diag.log('stall', name + ': 60 s sin cambio de ronda', { locked: main.querySelector('#area').style.pointerEvents === 'none' }); }, 60000); }
 function roundShell(title, n) {
   main.innerHTML = `<section class="screen">${topbar(title)}${guideHtml(title)}<div class="progress"><i id="bar"></i></div><div id="area"></div><div class="feedback" id="fb"></div></section>`; wire();
   return { area: $('#area'), fb: $('#fb'), bar: $('#bar'), n };
 }
 function finish(sh, won, replay) {
-  sh.bar.style.width = '100%'; P.games = (P.games || 0) + 1; saveProfiles(); mark('game:' + settings.lang + ':' + (P.games)); checkBadges();
+  clearTimeout(roundWatch); sh.bar.style.width = '100%'; P.games = (P.games || 0) + 1; saveProfiles(); mark('game:' + settings.lang + ':' + (P.games)); checkBadges();
   sh.area.innerHTML = `<div class="stage"><div class="pic">🏆</div><div class="starrow" id="starrow"></div><div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(U().done, { n: won }))}</div>
     <div class="row"><button class="btn big icon" id="again" type="button" aria-label="${esc(U().again)}">🔁</button><button class="btn alt icon" id="hm" type="button" aria-label="${esc(U().home)}">🏠</button></div></div>`;
   sh.fb.textContent = ''; confetti();
@@ -422,12 +441,12 @@ function finish(sh, won, replay) {
 }
 function correct(sh, b, n, after, parts) { b.classList.add('good'); Sfx.good(); const c = cheer(); sh.fb.textContent = c; if (n) award(n); confetti();
   // Avanza cuando la voz TERMINA de felicitar, nunca por reloj (si no, la ronda siguiente corta la frase).
-  sh.area.style.pointerEvents = 'none'; // un toque extra no debe cancelar la felicitación ni trabar la ronda
+  armWatchdog('correct'); sh.area.style.pointerEvents = 'none'; // un toque extra no debe cancelar la felicitación ni trabar la ronda
   Voice.seq((parts || []).concat([c, 500]), () => { sh.area.style.pointerEvents = ''; if (document.contains(sh.area)) after(); }); }
 function wrong(sh, b, retry, tries, okSel) { b.classList.add('bad'); Sfx.bad(); sh.fb.textContent = U().bad; setTimeout(() => b.classList.remove('bad'), 400);
   if (tries >= 2 && okSel) { const ok = sh.area.querySelector(okSel); if (ok) { ok.classList.add('pulse'); Voice.seq([U().bad, 500, S().hint]); return; } }
   if (retry) setTimeout(() => { if (sh.area.style.pointerEvents !== 'none') retry(); }, 500); }
-function gameVowel(focus) {
+function gameVowel(focus) { Diag.crumb('gameVowel');
   const t = T(), u = U(); const sh = roundShell(u.games[0][0], 6); let r = 0, won = 0;
   function round() { if (r === sh.n) { finish(sh, won, gameVowel); return; }
     sh.bar.style.width = (r / sh.n * 100) + '%'; const k = (focus != null && r % 2 === 0) ? focus : Math.floor(Math.random() * 5), v = t.vowels[k]; let tries = 0;
@@ -437,7 +456,7 @@ function gameVowel(focus) {
     $$('[data-i]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.i === k) { if (tries === 0) hit('vowel:' + v[0]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: v[0], rate: .6 }, 300]); if (tries === 0) won++; } else { tries++; miss('vowel:' + v[0]); wrong(sh, b, hear, tries, `[data-i="${k}"]`); } }); }
   $('#guideText').textContent = S().gVowel; round();
 }
-function gameWord(focus) {
+function gameWord(focus) { Diag.crumb('gameWord');
   const t = T(), u = U(); const all = t.wordCats.flatMap(c => c[2]); const sh = roundShell(u.games[1][0], 6); let r = 0, won = 0;
   function round() { if (r === sh.n) { finish(sh, won, gameWord); return; }
     sh.bar.style.width = (r / sh.n * 100) + '%'; let opts = pick(all, 3), ans = opts[Math.floor(Math.random() * 3)]; let tries = 0;
@@ -448,7 +467,7 @@ function gameWord(focus) {
     $$('[data-w]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.w === ans[0]) { b.innerHTML += `<span class="lbl">${esc(caseIt(ans[0]))}</span>`; if (tries === 0) hit('word:' + ans[0]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: ans[0], rate: .7 }, 400]); if (tries === 0) won++; } else { tries++; miss('word:' + ans[0]); wrong(sh, b, hear, tries, `[data-w="${ans[0].replace(/"/g, '')}"]`); } }); }
   $('#guideText').textContent = S().gWord; round();
 }
-function gameBuild(focus) {
+function gameBuild(focus) { Diag.crumb('gameBuild');
   const t = T(), u = U(); const sh = roundShell(u.games[2][0], 6); let r = 0, won = 0; let items = pick(t.build, 6);
   if (focus) { const f = t.build.find(x => x.slice(0, -1).join('') === focus); if (f) items = [f].concat(items.filter(x => x !== f)).slice(0, 6); }
   function round() { if (r === sh.n) { finish(sh, won, gameBuild); return; }
@@ -470,7 +489,7 @@ function gameBuild(focus) {
       else { bad = true; miss('build:' + word); wrong(sh, b, null, 2, `.piece[data-i="${placed.length}"]`); } }); }
   $('#guideText').textContent = S().gBuild; round();
 }
-function gameFirst(focus) {
+function gameFirst(focus) { Diag.crumb('gameFirst');
   const t = T(), u = U(); const all = t.letters.concat(t.vowels.map(v => [v[0].toLowerCase(), v[1], v[2], v[0]])); const sh = roundShell(u.games[3][0], 6); let r = 0, won = 0;
   function round() { if (r === sh.n) { finish(sh, won, gameFirst); return; }
     sh.bar.style.width = (r / sh.n * 100) + '%'; const ans = (focus && r % 2 === 0 && all.find(x => x[0] === focus)) || all[Math.floor(Math.random() * all.length)]; let tries = 0;
@@ -481,7 +500,7 @@ function gameFirst(focus) {
     $$('[data-l]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.l === ans[0]) { if (tries === 0) hit('letter:' + ans[0]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: ans[1], rate: .7 }, 400]); if (tries === 0) won++; } else { tries++; miss('letter:' + ans[0]); wrong(sh, b, hear, tries, `[data-l="${ans[0]}"]`); } }); }
   $('#guideText').textContent = S().gFirst; round();
 }
-function gameMemory() {
+function gameMemory() { Diag.crumb('gameMemory');
   const t = T(), u = U(); const all = t.wordCats.flatMap(c => c[2]).filter(w => w[0].length <= 6); const sh = roundShell(u.games[4][0], 1); let won = 0;
   const pairs = pick(all, 4); const cards = shuffle(pairs.flatMap((w, i) => [{ k: i, kind: 'pic', v: w[1], w: w[0] }, { k: i, kind: 'txt', v: caseIt(w[0]), w: w[0] }]));
   let open = [], matched = 0, lock = false;
@@ -493,7 +512,7 @@ function gameMemory() {
       if (cards[a].k === cards[bI].k) { setTimeout(() => { A.classList.add('matched'); B.classList.add('matched'); Sfx.good(); matched++; award(1); won++; open = []; lock = false; sh.bar.style.width = (matched / 4 * 100) + '%'; if (matched === 4) setTimeout(() => { if (document.contains(sh.area)) finish(sh, won, gameMemory); }, 600); }, 400); }
       else setTimeout(() => { [A, B].forEach(x => { x.classList.add('face'); x.innerHTML = '❔'; }); Sfx.bad(); open = []; lock = false; }, 900); } });
 }
-function gameMissing(focus) {
+function gameMissing(focus) { Diag.crumb('gameMissing');
   const t = T(), u = U(); const sh = roundShell(u.games[5][0], 6); let r = 0, won = 0; let items = pick(t.missing, 6);
   if (focus) { const f = t.missing.find(x => x[0] === focus); if (f) items = [f].concat(items.filter(x => x !== f)).slice(0, 6); }
   function round() { if (r === sh.n) { finish(sh, won, gameMissing); return; }
@@ -507,14 +526,14 @@ function gameMissing(focus) {
 }
 
 /* ---------- parents ---------- */
-function parentsScreen() {
+function parentsScreen() { Diag.crumb('parentsScreen');
   const u = U(); const a = 3 + Math.floor(Math.random() * 6), b = 2 + Math.floor(Math.random() * 7);
   main.innerHTML = `<section class="screen">${topbar(u.parentsT)}<div class="stage"><div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(u.parentsGate, { a, b }))}</div>
     <input type="text" inputmode="numeric" id="gate" maxlength="3" autocomplete="off"><button class="btn" id="ok" type="button">OK</button><div class="feedback" id="fb"></div></div></section>`;
   const check = () => { if (+$('#gate').value === a * b) parentsPanel(); else { $('#fb').textContent = u.wrongGate; $('#fb').style.color = 'var(--bad)'; } };
   $('#ok').onclick = check; $('#gate').onkeydown = e => { if (e.key === 'Enter') check(); }; wire(); setTimeout(() => $('#gate').focus(), 50);
 }
-function parentsPanel() {
+function parentsPanel() { Diag.crumb('parentsPanel');
   const t = T(), u = U(); const L = settings.lang; const lv = u.levels;
   const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, 27, 10];
   const vs = Voice.voices.filter(v => (v.lang || '').toLowerCase().startsWith(T().code));
@@ -531,7 +550,14 @@ function parentsPanel() {
       <div class="row"><button class="btn alt" id="testVoice" type="button">🔊 ${esc(u.listen)}</button><button class="btn alt" id="install" type="button" hidden>📲 ${esc(u.install)}</button></div></div>
     <div class="card"><h3>${esc(u.profiles)}</h3><div class="row" style="justify-content:flex-start"><button class="btn alt" id="switch" type="button">👥 ${esc(u.profiles)}</button><button class="btn alt" id="reset" type="button">🧹 ${esc(fmt(u.reset, { name: P.name }))}</button><button class="btn" style="background:var(--bad)" id="resetAll" type="button">${esc(u.resetAll)}</button></div>
       <small style="color:var(--muted)">${esc(u.about)}</small></div>
+    <div class="card"><h3>🛠 ${esc(u.diagT)}</h3><small style="color:var(--muted)">${esc(u.diagHelp)}</small>
+      <div class="row" style="justify-content:flex-start"><button class="btn alt" id="diagCopy" type="button">📋 ${esc(u.copy)}</button><button class="btn alt" id="diagShow" type="button">👁 ${esc(u.show)}</button><button class="btn alt" id="diagClear" type="button">🧹 ${esc(u.clear)}</button></div>
+      <pre id="diagOut" hidden style="white-space:pre-wrap;font-size:.7rem;max-height:40vh;overflow:auto;background:var(--bg);border-radius:12px;padding:10px;user-select:text;-webkit-user-select:text"></pre></div>
   </section>`;
+  $('#diagShow').onclick = () => { const o = $('#diagOut'); o.textContent = Diag.report(); o.hidden = !o.hidden; };
+  $('#diagClear').onclick = () => { Diag.clear(); $('#diagOut').textContent = ''; toast('🧹'); };
+  $('#diagCopy').onclick = () => { const txt = Diag.report(); const fallback = () => { const o = $('#diagOut'); o.textContent = txt; o.hidden = false; const r = document.createRange(); r.selectNodeContents(o); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast(u.copyManual); };
+    try { navigator.clipboard.writeText(txt).then(() => toast('📋 ✓'), fallback); } catch (e) { fallback(); } };
   $$('[data-practice]', main).forEach(b => b.onclick = () => practice(b.dataset.practice));
   $('#voiceSel').onchange = e => { settings.voice[L] = e.target.value; saveSettings(); Voice.say(t.vowels[0][1]); };
   $('#rate').oninput = e => { settings.rate = +e.target.value; $('#rateV').textContent = settings.rate; saveSettings(); };
@@ -572,9 +598,10 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferr
 $('#langBtn').onclick = () => { settings.lang = settings.lang === 'es' ? 'en' : 'es'; saveSettings(); Voice.stop(); setHeader(); home(); };
 $('#profileBtn').onclick = () => { Voice.stop(); profileScreen(); };
 $('#starsBtn').onclick = () => { Voice.stop(); parentsScreen(); };
+Diag.log('session', 'inicio ' + APP_VERSION, { lang: settings.lang });
 Voice.init();
 P = profiles.find(p => p.id === currentId) || null;
 setHeader();
 if (P) home(); else if (profiles.length) profileScreen(); else newProfileScreen();
-if ('serviceWorker' in navigator && location.protocol !== 'file:') { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
+if ('serviceWorker' in navigator && location.protocol !== 'file:') { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(e => Diag.log('sw', 'registro falló: ' + e.message))); }
 })();
