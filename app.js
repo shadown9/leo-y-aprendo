@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v14';
+const APP_VERSION = 'v15';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -167,27 +167,31 @@ function levelStars(i) {
 function profileScreen() { Diag.crumb('profileScreen');
   const u = U();
   main.innerHTML = `<section class="screen">
-    <div class="mascot"><span class="owl">🕊️</span><p>${esc(u.welcome)}</p></div>
+    ${guideHtml(u.welcome)}
     <div class="profiles">${profiles.map(p => `<button class="profile" type="button" data-id="${p.id}"><span class="av">${p.avatar}</span>${esc(p.name)}<small>⭐ ${p.stars}</small></button>`).join('')}
       <button class="profile add" type="button" id="addProfile"><span class="av">➕</span>${esc(u.newProfile)}</button></div>
   </section>`;
   $$('[data-id]', main).forEach(b => b.onclick = () => { Sfx.tap(); selectProfile(b.dataset.id); });
   $('#addProfile').onclick = newProfileScreen;
+  const intro = () => guideSay(u.welcome + ' ' + S().tapYours);
+  if (!Voice.unlocked) showGate(intro); else intro();
 }
 function newProfileScreen() { Diag.crumb('newProfileScreen');
-  const u = U(); let av = DATA.avatars[Math.floor(Math.random() * DATA.avatars.length)];
-  main.innerHTML = `<section class="screen">${topbar(u.newProfile)}
-    <div class="stage">
-      <input type="text" id="pname" maxlength="14" placeholder="${esc(u.yourName)}" autocomplete="off">
-      <p class="prompt">${esc(u.pickAvatar)}</p>
-      <div class="avgrid" id="avgrid">${DATA.avatars.map(a => `<button type="button" data-av="${a}" class="${a === av ? 'on' : ''}">${a}</button>`).join('')}</div>
-      <button class="btn big" id="go" type="button">${esc(u.start)}</button>
-    </div></section>`;
-  $$('[data-av]', main).forEach(b => b.onclick = () => { av = b.dataset.av; $$('[data-av]', main).forEach(x => x.classList.toggle('on', x === b)); Sfx.tap(); });
-  $('#go').onclick = () => { const name = $('#pname').value.trim() || (settings.lang === 'es' ? 'Amigo' : 'Friend');
-    const p = { id: String(Date.now()), name, avatar: av, stars: 0, done: {}, badges: {}, games: 0 }; profiles.push(p); saveProfiles(); selectProfile(p.id); };
+  const u = U(), s = S(); let av = null; const names = T().avatarNames || {};
+  main.innerHTML = `<section class="screen">${topbar(u.newProfile)}${guideHtml(s.pickAnimal)}
+    <div class="avgrid" id="avgrid">${DATA.avatars.map(a => `<button type="button" data-av="${a}" aria-label="${esc(names[a] || a)}">${a}</button>`).join('')}</div>
+    <div class="stage" style="gap:12px"><input type="text" id="pname" maxlength="14" placeholder="${esc(u.yourNameOpt)}" autocomplete="off"></div>
+    <div style="height:110px"></div>
+    <div class="bottombar"><button class="btn big" id="go" type="button" disabled>${esc(u.start)} ▶</button></div></section>`;
+  // Guía por voz: elige animal → lo nombra → el botón Empezar parpadea y la voz dice que lo toque.
+  $$('[data-av]', main).forEach(b => b.onclick = () => { av = b.dataset.av; $$('[data-av]', main).forEach(x => x.classList.toggle('on', x === b)); Sfx.sparkle(1);
+    const go = $('#go'); go.disabled = false; go.classList.add('pulse'); const nm = names[av] || '';
+    $('#guideText').textContent = s.nowStart; Voice.seq([nm ? fmt(s.animalIs, { a: nm }) : '', 500, s.nowStart]); });
+  $('#go').onclick = () => { if (!av) return; const name = $('#pname').value.trim() || names[av] || (settings.lang === 'es' ? 'Amigo' : 'Friend');
+    const p = { id: String(Date.now()), name, avatar: av, stars: 0, done: {}, badges: {}, games: 0 }; profiles.push(p); saveProfiles(); Sfx.star(); selectProfile(p.id); };
   $$('[data-home]', main).forEach(b => b.onclick = profiles.length ? profileScreen : newProfileScreen);
-  setTimeout(() => $('#pname').focus(), 50);
+  const intro = () => { guideSay(s.pickAnimal, () => { if (!av) setTimeout(() => { if (!av && document.contains($('#avgrid'))) Voice.seq([s.pickAnimal]); }, 9000); }); };
+  if (!Voice.unlocked) showGate(intro); else intro();
 }
 function selectProfile(id) { P = profiles.find(p => p.id === id) || null; currentId = id; store.set('current', id); setHeader(); home(); }
 
