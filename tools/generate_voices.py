@@ -25,9 +25,18 @@ ap.add_argument('--stability', type=float, default=0.45)      # más bajo = más
 ap.add_argument('--similarity', type=float, default=0.8)
 ap.add_argument('--style', type=float, default=0.35)          # exageración de estilo (alegría)
 ap.add_argument('--workers', type=int, default=3)
+ap.add_argument('--list', action='store_true', help='Lista tus voces (nombre, ID, idiomas) y sale')
 args = ap.parse_args()
 
 key = os.environ.get('ELEVEN_API_KEY')
+if args.list:
+    if not key: sys.exit('Falta ELEVEN_API_KEY')
+    req = urllib.request.Request('https://api.elevenlabs.io/v1/voices', headers={'xi-api-key': key})
+    with urllib.request.urlopen(req, timeout=30) as r: data = json.load(r)
+    for v in data.get('voices', []):
+        labels = v.get('labels') or {}
+        print(f"{v['name']:<28} {v['voice_id']}   {labels.get('language','')} {labels.get('accent','')} {labels.get('gender','')} {labels.get('age','')}")
+    sys.exit(0)
 manifest = json.load(open(os.path.join(VOCES, 'manifest.json'), encoding='utf-8'))
 langs = [args.only] if args.only else ['es', 'en']
 voices = {'es': args.voice_es, 'en': args.voice_en}
