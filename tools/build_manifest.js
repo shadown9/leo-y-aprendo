@@ -49,6 +49,9 @@ for (const L of ['es', 'en']) {
   // Colores y formas
   (t.colors || []).forEach(c => { add(c[0]); add(fmt(s.colorIs, { c: c[0] })); add(fmt(s.thingsOfColor, { c: c[0] })); });
   (t.shapes || []).forEach(x => { add(x[0]); add(fmt(s.shapeIs, { s: x[0] })); add(fmt(s.gShape, { s: x[0] })); });
+  // Hora y calendario
+  if (t.days) { t.days.forEach(d => { add(d); add(fmt(s.dayIs, { d })); add(fmt(s.gDay, { d })); }); add(t.days.join(', ')); for (let i = 0; i < 7; i++) add(fmt(s.afterIs, { a: t.days[i], b: t.days[(i + 1) % 7] }));
+    t.months.forEach(mo => add(mo[0])); add(s.oneOclock); add(s.oneHalf); for (let h = 2; h <= 12; h++) { add(fmt(s.oclock, { h: u.numbers[h - 1] })); add(fmt(s.half, { h: u.numbers[h - 1] })); } }
   // Animales del perfil
   Object.values(t.avatarNames || {}).forEach(n => { add(n); add(fmt(s.animalIs, { a: n })); });
   // Saludo sin nombre (el nombre del niño se dice con la voz del teléfono)
