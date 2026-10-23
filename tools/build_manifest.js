@@ -39,6 +39,9 @@ for (const L of ['es', 'en']) {
   // Números: palabras, dígitos, "este es el", "hay N cosas"
   u.numbers.forEach((w, i) => { add(w); add(String(i + 1)); add(fmt(s.numberIs, { n: w })); (t.countThings || []).forEach(th => add(fmt(s.allCounted, { n: w, things: th[0] }))); });
   (t.countThings || []).forEach(th => add(th[0]));
+  // Sumas y restas: todas las combinaciones hasta 10+10 y 20-10 (frases cortas)
+  if (s.addQ) { const N = n => n === 0 ? '0' : u.numbers[n - 1]; for (let a = 1; a <= 10; a++) for (let b = 1; b <= 10; b++) { if (a + b <= 20) { add(fmt(s.addQ, { a: N(a), b: N(b) })); add(fmt(s.addAns, { a: N(a), b: N(b), c: N(a + b) })); } }
+    for (let a = 2; a <= 20; a++) for (let b = 1; b < a && b <= 10; b++) { add(fmt(s.subQ, { a: N(a), b: N(b) })); add(fmt(s.subAns, { a: N(a), b: N(b), c: N(a - b) })); } }
   // Colores y formas
   (t.colors || []).forEach(c => { add(c[0]); add(fmt(s.colorIs, { c: c[0] })); add(fmt(s.thingsOfColor, { c: c[0] })); });
   (t.shapes || []).forEach(x => { add(x[0]); add(fmt(s.shapeIs, { s: x[0] })); add(fmt(s.gShape, { s: x[0] })); });

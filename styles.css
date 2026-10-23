@@ -229,6 +229,10 @@ canvas.trace{max-width:min(92vw,520px)}
 .grid.cubes .tile svg{filter:drop-shadow(0 4px 0 rgba(0,0,0,.15))}
 #shapegrid.cubes .tile,#colgrid.cubes .tile{min-height:var(--h,110px)}
 @media (min-width:640px){.home{grid-template-columns:repeat(5,1fr)}}
+/* sumas y restas */
+.countrow .op{font-family:var(--display);font-weight:700;font-size:2.4rem;color:var(--o);padding:0 6px;align-self:center}
+.countrow span.gone{opacity:.35;position:relative}
+.countrow span.gone::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:6px;background:var(--bad);transform:rotate(-20deg);border-radius:3px}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
 .confetti i{position:absolute;top:-20px;width:12px;height:12px;border-radius:3px;animation:fall 1.3s linear forwards}
