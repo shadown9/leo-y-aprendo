@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v16';
+const APP_VERSION = 'v17';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -45,6 +45,19 @@ const vcolor = v => 'var(--' + v.toLowerCase() + ')';
 const caseIt = s => settings.upper ? s.toUpperCase() : s;
 
 /* ---------- audio: speech + sfx ---------- */
+/* Voces grabadas (voces/<lang>/<hash>.mp3). Si existe el archivo de una frase se usa; si no, la voz del teléfono. */
+const Clips = {
+  index: { es: null, en: null }, cache: {},
+  hash(str) { let x = 5381; for (let i = 0; i < str.length; i++) x = ((x << 5) + x + str.charCodeAt(i)) >>> 0; return x.toString(16).padStart(8, '0'); },
+  load() { fetch('voces/index.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(j => { if (j) { this.index = { es: new Set(j.es || []), en: new Set(j.en || []) }; Diag.log('clips', 'voces: es ' + (j.es || []).length + ', en ' + (j.en || []).length); } }).catch(() => {}); },
+  file(lang, text) { const t = String(text).trim(); const idx = this.index[lang]; if (!idx || !idx.size) return null; const h = this.hash(lang + '|' + t); return idx.has(h) ? `voces/${lang}/${h}.mp3` : null; },
+  current: null,
+  play(src, opts) { this.stop(); const a = this.cache[src] || (this.cache[src] = new Audio(src)); this.current = a; a.playbackRate = opts.rate && opts.rate < .7 ? .82 : 1; try { a.preservesPitch = true; } catch (e) {}
+    let ended = false; const end = () => { if (ended) return; ended = true; if (this.current === a) this.current = null; if (opts.onend) opts.onend(); };
+    a.onended = end; a.onerror = () => { Diag.log('clips', 'error al reproducir ' + src); end(); }; a.currentTime = 0;
+    const pr = a.play(); if (pr && pr.catch) pr.catch(e => { Diag.log('clips', 'play() rechazado: ' + e.message); end(); }); },
+  stop() { if (this.current) { try { this.current.onended = null; this.current.pause(); } catch (e) {} this.current = null; } },
+};
 const Voice = {
   voices: [], unlocked: false, warned: false,
   load() { try { this.voices = speechSynthesis.getVoices() || []; } catch (e) { this.voices = []; } },
@@ -71,9 +84,11 @@ const Voice = {
   },
   say(text, opts) {
     opts = opts || {};
+    const clip = Clips.file(T().code, text);
+    if (clip) { try { speechSynthesis.cancel(); } catch (e) {} Clips.play(clip, opts); return; }
     if (!this.supported()) { Diag.log('speech', 'speechSynthesis no soportado'); showBanner(U().noVoice); return; }
     try {
-      speechSynthesis.cancel();
+      Clips.stop(); speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       const v = this.best();
       u.lang = T().bcp; u.rate = opts.rate || settings.rate; u.pitch = settings.pitch || 1.3;
@@ -89,7 +104,7 @@ const Voice = {
       u.onstart = () => { u._started = true; };
     } catch (e) { Diag.log('speech', 'speak() lanzó: ' + e.message); showBanner(U().noVoice); }
   },
-  stop() { this._seq++; try { speechSynthesis.cancel(); } catch (e) {} },
+  stop() { this._seq++; Clips.stop(); try { speechSynthesis.cancel(); } catch (e) {} },
   _seq: 0,
   /* Narración con pausas: parts = ['A', 1200, {t:'avión', rate:.6}, 800, ...]. Se cancela sola al cambiar de pantalla. */
   seq(parts, onDone) {
@@ -207,8 +222,9 @@ function home() { if (window._pendingReload) { location.reload(); return; } Diag
   $$('[data-go]', main).forEach(b => b.onclick = () => { Sfx.tap(); [vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen][+b.dataset.go](); });
   $('#reviewBtn').onclick = () => { Sfx.tap(); reviewGame(); };
   const greeting = fmt(u.hello, { name: P.name }) + ' ' + S().home;
-  if (!Voice.unlocked) { $('#guideText').textContent = greeting; showGate(() => { home._welcomed = true; guideSay(greeting); }); }
-  else if (!home._welcomed) { home._welcomed = true; guideSay(greeting); } else guideSay(S().home);
+  const sayGreeting = () => { $('#guideText').textContent = greeting; Voice.seq([settings.lang === 'es' ? '¡Hola!' : 'Hi!', 150, P.name, 400, S().home]); };
+  if (!Voice.unlocked) { $('#guideText').textContent = greeting; showGate(() => { home._welcomed = true; sayGreeting(); }); }
+  else if (!home._welcomed) { home._welcomed = true; sayGreeting(); } else guideSay(S().home);
 }
 
 /* ---------- guide (búho que habla) ---------- */
@@ -741,7 +757,7 @@ Diag.crumb = name => { origCrumb(name); const prev = current; current = name; tr
 try { history.replaceState({ lya: 0 }, ''); } catch (e) {}
 window.addEventListener('popstate', () => { if (current !== 'home' && current !== 'profileScreen' && current !== 'newProfileScreen') { Voice.stop(); home(); } else { try { history.pushState({ lya: 0 }, ''); } catch (e) {} } });
 Diag.log('session', 'inicio ' + APP_VERSION, { lang: settings.lang });
-Voice.init();
+Clips.load(); Voice.init();
 P = profiles.find(p => p.id === currentId) || null;
 setHeader();
 function openScreen(name) { const map = { vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, parentsScreen, gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, reviewGame };
