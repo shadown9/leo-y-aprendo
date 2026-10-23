@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v8';
+const APP_VERSION = 'v9';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -621,6 +621,12 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferr
 $('#langBtn').onclick = () => { settings.lang = settings.lang === 'es' ? 'en' : 'es'; saveSettings(); Voice.stop(); setHeader(); home(); };
 $('#profileBtn').onclick = () => { Voice.stop(); profileScreen(); };
 $('#starsBtn').onclick = () => { Voice.stop(); parentsScreen(); };
+/* Botón "atrás" del teléfono: vuelve al inicio en vez de salir de la app. Desde el inicio, no hace nada. */
+let current = 'home';
+const origCrumb = Diag.crumb.bind(Diag);
+Diag.crumb = name => { origCrumb(name); const prev = current; current = name; if (name !== 'home' && prev === 'home') { try { history.pushState({ lya: 1 }, ''); } catch (e) {} } };
+try { history.replaceState({ lya: 0 }, ''); } catch (e) {}
+window.addEventListener('popstate', () => { if (current !== 'home' && current !== 'profileScreen' && current !== 'newProfileScreen') { Voice.stop(); home(); } else { try { history.pushState({ lya: 0 }, ''); } catch (e) {} } });
 Diag.log('session', 'inicio ' + APP_VERSION, { lang: settings.lang });
 Voice.init();
 P = profiles.find(p => p.id === currentId) || null;
