@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v15';
+const APP_VERSION = 'v16';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -76,7 +76,7 @@ const Voice = {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       const v = this.best();
-      u.lang = T().bcp; u.rate = opts.rate || settings.rate; u.pitch = 1.1;
+      u.lang = T().bcp; u.rate = opts.rate || settings.rate; u.pitch = settings.pitch || 1.3;
       if (v) u.voice = v; else if (this.voices.length && !this.warned) { this.warned = true; Diag.log('speech', 'sin voz para ' + T().bcp, { voices: this.voices.length }); showBanner(U().noVoice); }
       else if (!this.voices.length && !this._noVoicesLogged) { this._noVoicesLogged = true; Diag.log('speech', 'lista de voces vacía al hablar'); }
       if (opts.onboundary) u.onboundary = opts.onboundary;
