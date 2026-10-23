@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v24';
+const APP_VERSION = 'v25';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -174,7 +174,7 @@ function topbar(title) { return `<div class="topbar"><button class="back" type="
 function wire() { $$('[data-home]', main).forEach(b => b.onclick = () => { Voice.stop(); home(); }); }
 function setHeader() { $('#langBtn').textContent = '🌎 ' + T().toggle; $('#starCount').textContent = stars(); $('#profileBtn').textContent = P ? P.avatar : '🕊️'; document.documentElement.lang = settings.lang; }
 function levelStars(i) {
-  if (!P) return 0; const d = P.done, L = settings.lang, pre = ['vowel:', 'letter:', 'syl:', 'word:', 'phrase:', 'story:', 'trace:', 'game:', 'num:', 'color:', 'math:', 'emo:', 'time:', 'sci:', 'song:'][i];
+  if (!P) return 0; const d = P.done, L = settings.lang, pre = ['vowel:', 'letter:', 'syl:', 'word:', 'phrase:', 'story:', 'trace:', 'game:', 'num:', 'color:', 'math:', 'emo:', 'time:', 'sci:', 'song:', 'money:', 'write:', 'body:', 'read:', 'mult:'][i];
   return Object.keys(d).filter(k => k.startsWith(pre) && (pre === 'trace:' || k.includes(':' + L + ':'))).length;
 }
 
@@ -219,7 +219,7 @@ function home() { if (window._pendingReload) { location.reload(); return; } Diag
     <button class="door review ${reviewDoneToday() ? 'donetoday' : ''}" type="button" id="reviewBtn"><span class="big">${reviewDoneToday() ? '✅' : '🎯'}</span>${esc(u.reviewT)}<small>${reviewDoneToday() ? esc(u.reviewDone) : esc(u.reviewSub)}</small><span class="lvstars">🔥 ${P.streak || 0}</span></button>
     <div class="home">${u.levels.map((d, i) => `<button class="door d${i + 1}" type="button" data-go="${i}"><span class="lvstars">⭐ ${levelStars(i)}</span><span class="big">${d[2]}</span>${esc(d[0])}<small>${esc(d[1])}</small></button>`).join('')}</div>
   </section>`;
-  $$('[data-go]', main).forEach(b => b.onclick = () => { Sfx.tap(); [vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, numbersScreen, colorsScreen, mathScreen, emotionsScreen, timeScreen, scienceScreen, songsScreen][+b.dataset.go](); });
+  $$('[data-go]', main).forEach(b => b.onclick = () => { Sfx.tap(); [vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, numbersScreen, colorsScreen, mathScreen, emotionsScreen, timeScreen, scienceScreen, songsScreen, moneyScreen, writeScreen, bodyScreen, readScreen, multScreen][+b.dataset.go](); });
   $('#reviewBtn').onclick = () => { Sfx.tap(); reviewGame(); };
   const greeting = fmt(u.hello, { name: P.name }) + ' ' + S().home;
   const sayGreeting = () => { $('#guideText').textContent = greeting; Voice.seq([settings.lang === 'es' ? '¡Hola!' : 'Hi!', 150, P.name, 400, S().home]); };
@@ -465,7 +465,7 @@ function gamesScreen() { Diag.crumb('gamesScreen');
   main.innerHTML = `<section class="screen">${topbar(u.gamesT)}
     ${guideHtml(S().games)}
     <div class="home">${u.games.map((g, i) => `<button class="door d${(i % 8) + 1}" type="button" data-g="${i}"><span class="big">${g[2]}</span>${esc(g[0])}<small>${esc(g[1])}</small></button>`).join('')}</div></section>`;
-  $$('[data-g]', main).forEach(b => b.onclick = () => { Sfx.tap(); [gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, gameCount, gameTapNum, gameColor, gameShape, gameAdd, gameSub, gameFeel, gameClock, gameDay, gameAnimalSound, gameHabitat][+b.dataset.g](); });
+  $$('[data-g]', main).forEach(b => b.onclick = () => { Sfx.tap(); [gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, gameCount, gameTapNum, gameColor, gameShape, gameAdd, gameSub, gameFeel, gameClock, gameDay, gameAnimalSound, gameHabitat, gameMoney, gameWrite, gameBody, gameWeather, gameRead, gameMult, gameFrac][+b.dataset.g](); });
   wire(); guideSay(S().games);
 }
 let roundWatch = null;
@@ -666,11 +666,11 @@ function reviewPlan() {
   const weak = Object.keys(e).filter(k => e[k] > 0).sort((a, b) => e[b] - e[a]);
   const stale = Object.keys(seen).filter(k => now - seen[k] > old && !weak.includes(k)).sort(() => Math.random() - .5);
   const keys = weak.slice(0, 4).concat(stale.slice(0, 4));
-  const map = { vowel: ['gameVowel', k => T().vowels.findIndex(v => v[0] === k)], word: ['gameWord', k => k], letter: ['gameFirst', k => k], missing: ['gameMissing', k => k], build: ['gameBuild', k => k], rhyme: ['gameRhyme', k => null], clap: ['gameClap', k => null], odd: ['gameOdd', k => null], num: ['gameCount', k => k], color: ['gameColor', k => k], math: [null, k => null], emo: ['gameFeel', k => null], time: ['gameClock', k => null], sci: ['gameAnimalSound', k => null] };
+  const map = { vowel: ['gameVowel', k => T().vowels.findIndex(v => v[0] === k)], word: ['gameWord', k => k], letter: ['gameFirst', k => k], missing: ['gameMissing', k => k], build: ['gameBuild', k => k], rhyme: ['gameRhyme', k => null], clap: ['gameClap', k => null], odd: ['gameOdd', k => null], num: ['gameCount', k => k], color: ['gameColor', k => k], math: [null, k => null], emo: ['gameFeel', k => null], time: ['gameClock', k => null], sci: ['gameAnimalSound', k => null], money: ['gameMoney', k => null], write: ['gameWrite', k => null], body: ['gameBody', k => null], read: ['gameRead', k => null], mult: ['gameMult', k => null] };
   const segs = []; const used = new Set();
   keys.forEach(key => { const [kind, id] = key.split(/:(.+)/); let m = map[kind]; if (kind === 'math') m = [id.includes('+') ? 'gameAdd' : 'gameSub', () => null]; if (m && m[0] && !used.has(m[0])) { used.add(m[0]); segs.push({ fn: m[0], focus: m[1](id) }); } });
   // Rellena hasta 4 segmentos con juegos variados (siempre hay repaso, aunque no haya fallos todavía)
-  ['gameVowel', 'gameFirst', 'gameRhyme', 'gameCount', 'gameWord', 'gameClap', 'gameMissing', 'gameOdd', 'gameTapNum', 'gameColor', 'gameShape', 'gameAdd', 'gameSub', 'gameFeel', 'gameClock', 'gameDay', 'gameAnimalSound', 'gameHabitat'].forEach(fn => { if (segs.length < 4 && !used.has(fn)) { used.add(fn); segs.push({ fn, focus: null }); } });
+  ['gameVowel', 'gameFirst', 'gameRhyme', 'gameCount', 'gameWord', 'gameClap', 'gameMissing', 'gameOdd', 'gameTapNum', 'gameColor', 'gameShape', 'gameAdd', 'gameSub', 'gameFeel', 'gameClock', 'gameDay', 'gameAnimalSound', 'gameHabitat', 'gameMoney', 'gameWrite', 'gameBody', 'gameWeather', 'gameMult', 'gameFrac'].forEach(fn => { if (segs.length < 4 && !used.has(fn)) { used.add(fn); segs.push({ fn, focus: null }); } });
   return segs.slice(0, 4);
 }
 const GAME_FNS = {};
@@ -951,6 +951,154 @@ function songsScreen() { Diag.crumb('songsScreen');
 }
 Object.assign(GAME_FNS, { gameAnimalSound, gameHabitat });
 
+/* ---------- Dinero (USD) ---------- */
+function moneyText(cents) { const s = S(); if (cents < 100) return fmt(s.cents, { n: U().numbers[cents - 1] || cents }); const d = Math.floor(cents / 100), c = cents % 100; const dt = d === 1 ? s.dollar1 : fmt(s.dollars, { n: U().numbers[d - 1] || d }); return c ? dt + (settings.lang === 'es' ? ' con ' : ' and ') + fmt(s.cents, { n: U().numbers[c - 1] || c }) : dt; }
+function coinHtml(c, big) { return `<span class="coin ${c[1] >= 100 ? 'bill' : ''}" style="font-size:${big ? 2.2 : 1.5}rem">${c[2]}<b>${c[3]}</b></span>`; }
+function moneyScreen() { Diag.crumb('moneyScreen');
+  const t = T(), u = U(), s = S(), L = settings.lang;
+  main.innerHTML = `<section class="screen">${topbar(u.moneyT)}${guideHtml(s.money)}
+    <div class="grid" id="coins">${t.coins.map((c, i) => `<button class="tile keep ${has('money:' + L + ':' + c[1]) ? 'done' : ''}" type="button" data-c="${i}" style="--cube:var(--card)">${coinHtml(c, true)}<span class="lbl" style="color:var(--fg)">${esc(c[0])}</span></button>`).join('')}</div>
+    <div class="stage" id="stage" hidden></div></section>`;
+  bigOpts(main, '#coins', 2);
+  $$('#coins .tile').forEach(b => b.onclick = () => { const c = t.coins[+b.dataset.c]; Sfx.tap(); award(1, 'money:' + L + ':' + c[1]); b.classList.add('done'); const st = $('#stage'); st.hidden = false;
+    const n = c[1] >= 100 ? 1 : Math.min(4, Math.floor(100 / c[1]));
+    st.innerHTML = `<div class="countrow big">${coinHtml(c, true)}</div><div class="word" style="font-size:1.6rem;letter-spacing:0">${esc(c[0])} = ${c[3]}</div>${c[1] < 100 ? `<div class="sub">${esc(c[3])} ${'+ ' + c[3] + ' '.repeat(1)}… </div>` : ''}<button class="btn big icon" id="say" type="button">🔊</button>`;
+    const parts = [fmt(s.coinIs, { c: c[0], v: moneyText(c[1]) })]; $('#guideText').textContent = parts[0]; Voice.seq(parts); $('#say').onclick = () => Voice.seq(parts); st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+  wire(); guideSay(s.money);
+}
+function gameMoney(focus, opts) { Diag.crumb('gameMoney'); opts = opts || {};
+  const t = T(), u = U(), s = S(); const sh = gameShell(u.games[20][0], opts, 6); let r = 0, won = 0; const L = level('money');
+  function round() { if (r === sh.n) { done(sh, won, () => gameMoney(focus), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const pool = L === 1 ? t.coins.slice(0, 2) : L === 2 ? t.coins.slice(0, 4) : t.coins; const n = L === 1 ? 2 + Math.floor(Math.random() * 2) : 2 + Math.floor(Math.random() * 3);
+    const set = Array.from({ length: n }, () => pool[Math.floor(Math.random() * pool.length)]); const total = set.reduce((a, c) => a + c[1], 0); let tries = 0; firstSeen('money:' + total);
+    const cands = new Set(); while (cands.size < 2) { const alt = total + [-25, -10, -5, 5, 10, 25, 100][Math.floor(Math.random() * 7)]; if (alt > 0 && alt !== total) cands.add(alt); } const optsM = shuffle([total].concat([...cands]));
+    sh.area.innerHTML = `<div class="stage"><div class="countrow big">${set.map(c => coinHtml(c, false)).join('')}</div><button class="btn big icon" id="hear" type="button">🔊</button></div>
+      <div class="grid">${optsM.map(v => `<button class="tile" type="button" data-v="${v}" style="font-size:1.9rem">${v >= 100 ? '$' + (v / 100).toFixed(v % 100 ? 2 : 0) : v + '¢'}</button>`).join('')}</div>`;
+    bigOpts(sh.area); const hear = () => Voice.seq([s.gMoney]); $('#hear').onclick = hear; askOnce(opts, r, s.gMoney, hear);
+    $$('[data-v]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.v === total) { if (tries === 0) hit('money:' + total); adapt('money', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.totalIs, { v: moneyText(total) }), 300]); if (tries === 0) won++; } else { tries++; miss('money:' + total); if (tries === 1) adapt('money', false); wrong(sh, b, hear, tries, `[data-v="${total}"]`); } }); }
+  $('#guideText').textContent = s.gMoney; round();
+}
+/* ---------- Escribir palabras (tocar letras en orden) ---------- */
+function writeScreen() { Diag.crumb('writeScreen'); const s = S(); Voice.seq([s.write, 300], () => gameWrite()); }
+function gameWrite(focus, opts) { Diag.crumb('gameWrite'); opts = opts || {};
+  const t = T(), u = U(), s = S(); const sh = gameShell(u.games[21][0], opts, 6); let r = 0, won = 0; const L = level('write');
+  const pool = t.writeWords.filter(w => L === 1 ? w[0].length <= 3 : L === 2 ? w[0].length <= 4 : true); const items = pick(pool.length >= 6 ? pool : t.writeWords, 6);
+  function round() { if (r === sh.n) { done(sh, won, () => gameWrite(focus), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const [word, pic] = items[r]; const letters = word.split(''); let pos = 0, bad = false; firstSeen('write:' + word);
+    const extra = pick('abcdefghijlmnoprstuv'.split('').filter(ch => !letters.includes(ch)), L === 3 ? 3 : 2); const tiles = shuffle(letters.concat(extra));
+    sh.area.innerHTML = `<div class="stage"><div class="pic" style="font-size:4.5rem">${pic}</div><div class="slots">${letters.map(() => `<div class="slot"></div>`).join('')}</div><button class="btn big icon" id="hear" type="button">🔊</button></div>
+      <div class="grid" id="keys">${tiles.map((ch, i) => `<button class="tile" type="button" data-ch="${ch}" data-i="${i}">${caseIt(ch)}</button>`).join('')}</div>`;
+    bigOpts(sh.area, '#keys', tiles.length <= 6 ? 3 : 4); $('#keys').style.setProperty('--h', '84px');
+    const hear = () => Voice.seq([{ t: word, rate: .7 }, 500].concat(sylSpeech((t.syllabify[word] || word).split('-')))); $('#hear').onclick = hear; askOnce(opts, r, s.gWrite, hear);
+    const slots = $$('.slot', sh.area);
+    $$('[data-ch]', sh.area).forEach(b => b.onclick = () => { if (b.disabled) return;
+      if (b.dataset.ch === letters[pos]) { b.disabled = true; slots[pos].textContent = caseIt(letters[pos]); slots[pos].classList.add('full'); pos++; Sfx.tap(); const snd = (t.sounds || {})[b.dataset.ch] || b.dataset.ch;
+        if (pos < letters.length) Voice.seq([{ t: snd.split(',')[0], rate: .6 }]);
+        else { $$('.slot', sh.area).forEach(x => x.classList.add('good')); if (!bad) { hit('write:' + word); won += 2; } adapt('write', !bad); correct(sh, b, bad ? 0 : 2, () => { r++; round(); }, [{ t: word, rate: .75 }, 300, fmt(s.wroteIt, { w: word }), 300]); } }
+      else { if (!bad) { miss('write:' + word); adapt('write', false); } bad = true; const ok = $$('[data-ch]', sh.area).find(x => !x.disabled && x.dataset.ch === letters[pos]); wrong(sh, b, null, 2, ok ? `[data-i="${ok.dataset.i}"]` : null); Voice.seq([u.bad, 400, fmt(s.nextLetter, { l: letters[pos] })]); } }); }
+  $('#guideText').textContent = s.gWrite; round();
+}
+/* ---------- Mi cuerpo y el clima ---------- */
+function bodyScreen() { Diag.crumb('bodyScreen');
+  const t = T(), u = U(), s = S(), L = settings.lang;
+  main.innerHTML = `<section class="screen">${topbar(u.bodyT + ' · ' + u.weatherT)}${guideHtml(s.body)}
+    <p class="prompt">🧍 ${esc(u.bodyT)}</p><div class="grid" id="body">${t.bodyParts.map((bp, i) => `<button class="tile keep ${has('body:' + L + ':' + bp[0]) ? 'done' : ''}" type="button" data-b="${i}" style="--cube:var(--card)"><span class="pic">${bp[1]}</span><span class="lbl" style="color:var(--fg)">${esc(bp[0])}</span></button>`).join('')}</div>
+    <p class="prompt">🌤️ ${esc(u.weatherT)}</p><div class="grid" id="weather">${t.weatherKinds.map((w, i) => `<button class="tile keep ${has('body:' + L + ':' + w[0]) ? 'done' : ''}" type="button" data-w="${i}" style="--cube:var(--card)"><span class="pic">${w[1]}</span><span class="lbl" style="color:var(--fg)">${esc(caseIt(w[0]))}</span></button>`).join('')}</div></section>`;
+  bigOpts(main, '#body', 2); bigOpts(main, '#weather', 2); $('#body').style.setProperty('--h', '96px'); $('#weather').style.setProperty('--h', '100px');
+  $$('#body .tile').forEach(b => b.onclick = () => { const bp = t.bodyParts[+b.dataset.b]; Sfx.tap(); award(1, 'body:' + L + ':' + bp[0]); b.classList.add('done'); $('#guideText').textContent = fmt(s.bodyPart, { p: bp[0], d: bp[2] }); Voice.seq([fmt(s.bodyPart, { p: bp[0], d: bp[2] })]); });
+  $$('#weather .tile').forEach(b => b.onclick = () => { const w = t.weatherKinds[+b.dataset.w]; Sfx.tap(); award(1, 'body:' + L + ':' + w[0]); b.classList.add('done'); $('#guideText').textContent = fmt(s.weatherIs, { w: w[0], d: w[2] }); Voice.seq([fmt(s.weatherIs, { w: w[0], d: w[2] })]); });
+  wire(); guideSay(s.body);
+}
+function gameBody(focus, opts) { Diag.crumb('gameBody'); opts = opts || {};
+  const t = T(), u = U(), s = S(); const sh = gameShell(u.games[22][0], opts, 6); let r = 0, won = 0; const L = level('body'); const nOpts = [3, 4, 6][L - 1];
+  function round() { if (r === sh.n) { done(sh, won, () => gameBody(focus), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const ans = t.bodyParts[Math.floor(Math.random() * t.bodyParts.length)]; let tries = 0; firstSeen('body:' + ans[0]);
+    const optsB = shuffle([ans].concat(pick(t.bodyParts.filter(x => x !== ans), nOpts - 1)));
+    sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(fmt(s.tapPart, { p: ans[0] }))}</p>
+      <div class="grid">${optsB.map(bp => `<button class="tile keep" type="button" data-b="${esc(bp[0])}" style="--cube:var(--card)"><span class="pic">${bp[1]}</span>${L < 3 ? `<span class="lbl" style="color:var(--fg)">${esc(bp[0])}</span>` : ''}</button>`).join('')}</div>`;
+    bigOpts(sh.area); const hear = () => Voice.seq([fmt(s.tapPart, { p: ans[0] })]); $('#hear').onclick = hear; askOnce(opts, r, s.gBody + ' ' + fmt(s.tapPart, { p: ans[0] }), hear);
+    $$('[data-b]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.b === ans[0]) { if (tries === 0) hit('body:' + ans[0]); adapt('body', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.bodyPart, { p: ans[0], d: ans[2] }), 300]); if (tries === 0) won++; } else { tries++; miss('body:' + ans[0]); if (tries === 1) adapt('body', false); wrong(sh, b, hear, tries, `[data-b="${ans[0]}"]`); } }); }
+  $('#guideText').textContent = s.gBody; round();
+}
+function gameWeather(focus, opts) { Diag.crumb('gameWeather'); opts = opts || {};
+  const t = T(), u = U(), s = S(); const sh = gameShell(u.games[23][0], opts, 6); let r = 0, won = 0; const L = level('weather'); const nOpts = [3, 4, 6][L - 1];
+  function round() { if (r === sh.n) { done(sh, won, () => gameWeather(focus), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const w = t.weatherKinds[Math.floor(Math.random() * t.weatherKinds.length)]; const ans = t.wearOptions.find(o => o[0] === w[3]); let tries = 0; firstSeen('body:' + w[0]);
+    const optsW = shuffle([ans].concat(pick(t.wearOptions.filter(o => o !== ans && o[1] !== ans[1]), nOpts - 1)));
+    sh.area.innerHTML = `<div class="stage"><div class="pic" style="font-size:5rem">${w[1]}</div><div class="word">${esc(caseIt(w[0]))}</div><button class="btn big icon" id="hear" type="button">🔊</button></div>
+      <div class="grid">${optsW.map(o => `<button class="tile keep" type="button" data-o="${esc(o[0])}" style="--cube:var(--card)"><span class="pic">${o[1]}</span>${L < 3 ? `<span class="lbl" style="color:var(--fg)">${esc(o[0])}</span>` : ''}</button>`).join('')}</div>`;
+    bigOpts(sh.area); const hear = () => Voice.seq([fmt(s.gWeather, { w: w[0] })]); $('#hear').onclick = hear; askOnce(opts, r, fmt(s.gWeather, { w: w[0] }), hear);
+    $$('[data-o]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.o === ans[0]) { if (tries === 0) hit('body:' + w[0]); adapt('weather', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.wearIt, { w: w[0], c: ans[0] }), 300]); if (tries === 0) won++; } else { tries++; miss('body:' + w[0]); if (tries === 1) adapt('weather', false); wrong(sh, b, hear, tries, `[data-o="${ans[0]}"]`); } }); }
+  $('#guideText').textContent = fmt(s.gWeather, { w: '…' }); round();
+}
+/* ---------- Leer y entender (8+): texto corto + 4 preguntas ---------- */
+function readScreen() { Diag.crumb('readScreen');
+  const t = T(), u = U(), s = S(), L = settings.lang;
+  main.innerHTML = `<section class="screen">${topbar(u.readT)}${guideHtml(s.read)}
+    <div class="grid" id="reads">${t.readings.map((rd, i) => `<button class="tile keep ${has('read:' + L + ':' + i) ? 'done' : ''}" type="button" data-r="${i}" style="--cube:var(--card)"><span class="pic">📖</span><span class="lbl" style="color:var(--fg)">${esc(rd.title)}</span></button>`).join('')}</div></section>`;
+  bigOpts(main, '#reads', 1); $('#reads').style.setProperty('--h', '96px');
+  $$('#reads .tile').forEach(b => b.onclick = () => { Sfx.tap(); gameRead(+b.dataset.r); }); wire(); guideSay(s.read);
+}
+function gameRead(focus, opts) { Diag.crumb('gameRead'); opts = opts || {};
+  const t = T(), u = U(), s = S(), L = settings.lang; const idx = typeof focus === 'number' ? focus : Math.floor(Math.random() * t.readings.length); const rd = t.readings[idx];
+  const sh = gameShell(rd.title, opts, rd.qs.length); let r = 0, won = 0; let phase = 'read';
+  const words = rd.text.split(' ');
+  sh.area.innerHTML = `<div class="stage"><div class="reading" id="rtext">${words.map(w => `<button class="w" type="button" data-w="${esc(w.replace(/[.,!?—"¡¿]/g, ''))}">${esc(w)}</button>`).join(' ')}</div>
+    <div class="row"><button class="btn big icon" id="readAll" type="button">🔊</button><button class="btn icon" id="goQ" type="button">➡️</button></div></div>`;
+  $$('.w', sh.area).forEach(b => b.onclick = () => Voice.seq([{ t: b.dataset.w, rate: .8 }]));
+  const readAll = () => { Voice.stop(); setTimeout(() => readAlong($('#rtext'), rd.text, () => $('#goQ').classList.add('pulse')), 100); };
+  $('#readAll').onclick = readAll; $('#goQ').onclick = () => { Voice.stop(); question(); };
+  Voice.seq([s.read, 300, s.readTap], () => { if (level('read') === 1) readAll(); else $('#goQ').classList.add('pulse'); });
+  function question() { if (r === rd.qs.length) { mark('read:' + L + ':' + idx); done(sh, won, () => gameRead(idx), opts); return; }
+    sh.bar.style.width = (r / rd.qs.length * 100) + '%'; const q = rd.qs[r]; let tries = 0; const optsQ = shuffle(q[1].map((o, i) => [o, i]));
+    sh.area.innerHTML = `<div class="stage"><div class="sub">${esc(fmt(s.readQ, { n: r + 1 }))}</div><div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(q[0])}</div><button class="btn icon" id="hear" type="button">🔊</button></div>
+      <div class="grid">${optsQ.map(o => `<button class="tile" type="button" data-i="${o[1]}" style="font-size:1.25rem;padding:10px">${esc(o[0])}</button>`).join('')}</div>`;
+    bigOpts(sh.area); const hear = () => Voice.seq([q[0]].concat(optsQ.flatMap(o => [400, { t: o[0], rate: .85 }]))); $('#hear').onclick = hear; setTimeout(hear, 200);
+    $$('[data-i]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.i === q[2]) { if (tries === 0) hit('read:' + idx); adapt('read', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; question(); }, [{ t: q[1][q[2]], rate: .85 }, 300]); if (tries === 0) won++; } else { tries++; miss('read:' + idx); if (tries === 1) adapt('read', false); wrong(sh, b, hear, tries, `[data-i="${q[2]}"]`); } }); }
+  $('#guideText').textContent = s.read;
+}
+/* ---------- Multiplicar y fracciones ---------- */
+function multScreen() { Diag.crumb('multScreen');
+  const u = U(), s = S(), L = settings.lang; const t = T();
+  main.innerHTML = `<section class="screen">${topbar(u.multT + ' · ' + u.fracT)}${guideHtml(s.mult)}
+    <p class="prompt">✖️ ${esc(u.multT)}</p><div class="grid" id="tables">${[2, 3, 4, 5, 10].map(n => `<button class="tile" type="button" data-n="${n}">×${n}</button>`).join('')}</div>
+    <div class="stage" id="stage" hidden></div>
+    <p class="prompt">🍕 ${esc(u.fracT)}</p><div class="grid" id="fracs">${t.fractions.map((f, i) => `<button class="tile keep ${has('mult:' + L + ':' + f[1]) ? 'done' : ''}" type="button" data-f="${i}" style="--cube:var(--card)">${fracSvg(f[2], f[3], 70)}<span class="lbl" style="color:var(--fg)">${f[1]}</span></button>`).join('')}</div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="goMult" type="button">▶ ${esc(u.games[25][0])}</button><button class="btn alt" id="goFrac" type="button">▶ ${esc(u.games[26][0])}</button></div></section>`;
+  bigOpts(main, '#tables', 5); bigOpts(main, '#fracs', 3); $('#tables').style.setProperty('--h', '72px'); $('#fracs').style.setProperty('--h', '110px');
+  $$('#tables .tile').forEach(b => b.onclick = () => { const n = +b.dataset.n; Sfx.tap(); award(1, 'mult:' + L + ':t' + n); const st = $('#stage'); st.hidden = false; const nums = u.numbers;
+    st.innerHTML = `<div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(s.multTable, { n }))}</div><div class="tablerows">${Array.from({ length: 10 }, (_, i) => `<button class="trow" type="button" data-a="${i + 1}">${n} × ${i + 1} = <b>${n * (i + 1)}</b><span>${'●'.repeat(Math.min(i + 1, 10))}</span></button>`).join('')}</div>`;
+    $$('.trow', st).forEach(x => x.onclick = () => { const a = +x.dataset.a; $$('.trow', st).forEach(y => y.classList.toggle('hl', y === x)); Voice.seq([fmt(s.multAns, { a: n, b: a, c: n * a })]); });
+    Voice.seq([fmt(s.multTable, { n }), 400, s.mult.split('.')[0] + '.']); st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+  $$('#fracs .tile').forEach(b => b.onclick = () => { const f = t.fractions[+b.dataset.f]; Sfx.tap(); award(1, 'mult:' + L + ':' + f[1]); b.classList.add('done'); $('#guideText').textContent = fmt(s.fracIs, { f: f[0], d: f[4] }); Voice.seq([fmt(s.fracIs, { f: f[0], d: f[4] })]); });
+  $('#goMult').onclick = () => gameMult(); $('#goFrac').onclick = () => gameFrac(); wire(); guideSay(s.mult);
+}
+function fracSvg(parts, filled, size) { const r = 50, cx = 60, cy = 60; let d = ''; for (let i = 0; i < parts; i++) { const a0 = (i / parts) * 2 * Math.PI - Math.PI / 2, a1 = ((i + 1) / parts) * 2 * Math.PI - Math.PI / 2; const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0), x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1); d += `<path d="M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${parts === 2 ? 1 : 0},1 ${x1.toFixed(1)},${y1.toFixed(1)} Z" fill="${i < filled ? 'var(--a)' : 'var(--bg)'}" stroke="var(--fg)" stroke-width="3"/>`; } return `<svg viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true">${d}</svg>`; }
+function gameMult(focus, opts) { Diag.crumb('gameMult'); opts = opts || {};
+  const u = U(), s = S(); const sh = gameShell(u.games[25][0], opts, 6); let r = 0, won = 0; const L = level('mult'); const tables = L === 1 ? [2, 5, 10] : L === 2 ? [2, 3, 4, 5, 10] : [2, 3, 4, 5, 6, 7, 8, 9, 10]; const maxB = L === 1 ? 5 : 10;
+  function round() { if (r === sh.n) { done(sh, won, () => gameMult(focus), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const b = tables[Math.floor(Math.random() * tables.length)], a = 1 + Math.floor(Math.random() * maxB), c = a * b; let tries = 0; firstSeen('mult:' + a + 'x' + b);
+    const cands = new Set(); while (cands.size < 2) { const alt = c + [-b, b, -a, a, -1, 1][Math.floor(Math.random() * 6)]; if (alt > 0 && alt !== c) cands.add(alt); } const optsM = shuffle([c].concat([...cands]));
+    const thing = T().countThings[Math.floor(Math.random() * T().countThings.length)][1];
+    sh.area.innerHTML = `<div class="stage"><div class="groups">${Array.from({ length: a }, () => `<span class="grp">${thing.repeat(b)}</span>`).join('')}</div><div class="word" style="font-size:2.2rem;letter-spacing:4px">${a} × ${b} = <span style="color:var(--a)">?</span></div><button class="btn big icon" id="hear" type="button">🔊</button></div>
+      <div class="grid">${optsM.map(v => `<button class="tile" type="button" data-v="${v}">${v}</button>`).join('')}</div>`;
+    bigOpts(sh.area); const hear = () => Voice.seq([fmt(s.multQ, { a, b })]); $('#hear').onclick = hear; askOnce(opts, r, s.mult.split('.')[0] + '. ' + fmt(s.multQ, { a, b }), hear);
+    $$('[data-v]', sh.area).forEach(btn => btn.onclick = () => { if (+btn.dataset.v === c) { if (tries === 0) hit('mult:' + a + 'x' + b); adapt('mult', tries === 0); correct(sh, btn, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.multAns, { a, b, c }), 300]); if (tries === 0) won++; } else { tries++; miss('mult:' + a + 'x' + b); if (tries === 1) adapt('mult', false); wrong(sh, btn, hear, tries, `[data-v="${c}"]`); } }); }
+  $('#guideText').textContent = s.mult; round();
+}
+function gameFrac(focus, opts) { Diag.crumb('gameFrac'); opts = opts || {};
+  const t = T(), u = U(), s = S(); const sh = gameShell(u.games[26][0], opts, 6); let r = 0, won = 0; const L = level('frac'); const pool = L === 1 ? t.fractions.slice(0, 3) : t.fractions; const nOpts = L === 3 ? 4 : 3;
+  function round() { if (r === sh.n) { done(sh, won, () => gameFrac(focus), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const ans = pool[Math.floor(Math.random() * pool.length)]; let tries = 0; firstSeen('mult:' + ans[1]);
+    const optsF = shuffle([ans].concat(pick(t.fractions.filter(f => f !== ans), nOpts - 1)));
+    sh.area.innerHTML = `<div class="stage">${fracSvg(ans[2], ans[3], 170)}<button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(s.gFrac)}</p>
+      <div class="grid">${optsF.map(f => `<button class="tile" type="button" data-f="${f[1]}" style="font-size:2.4rem">${f[1]}</button>`).join('')}</div>`;
+    bigOpts(sh.area); const hear = () => Voice.seq([s.gFrac]); $('#hear').onclick = hear; askOnce(opts, r, s.gFrac, hear);
+    $$('[data-f]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.f === ans[1]) { if (tries === 0) hit('mult:' + ans[1]); adapt('frac', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.fracIs, { f: ans[0], d: ans[4] }), 300]); if (tries === 0) won++; } else { tries++; miss('mult:' + ans[1]); if (tries === 1) adapt('frac', false); const o = t.fractions.find(f => f[1] === b.dataset.f); Voice.seq([{ t: o[0], rate: .85 }]); wrong(sh, b, null, tries, `[data-f="${ans[1]}"]`); } }); }
+  $('#guideText').textContent = s.gFrac; round();
+}
+Object.assign(GAME_FNS, { gameMoney, gameWrite, gameBody, gameWeather, gameRead, gameMult, gameFrac });
+
 /* ---------- parents ---------- */
 function parentsScreen() { Diag.crumb('parentsScreen');
   const u = U(); const a = 3 + Math.floor(Math.random() * 6), b = 2 + Math.floor(Math.random() * 7);
@@ -961,12 +1109,12 @@ function parentsScreen() { Diag.crumb('parentsScreen');
 }
 function parentsPanel() { Diag.crumb('parentsPanel');
   const t = T(), u = U(); const L = settings.lang; const lv = u.levels;
-  const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, 27, 10, 20, t.colors.length + t.shapes.length, 20, t.emotions.length, 12 + 7 + 12, t.animals.length + t.plant.length + 1 + t.planets.length, t.songs.length];
+  const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, 27, 10, 20, t.colors.length + t.shapes.length, 20, t.emotions.length, 12 + 7 + 12, t.animals.length + t.plant.length + 1 + t.planets.length, t.songs.length, t.coins.length, t.writeWords.length, t.bodyParts.length + t.weatherKinds.length, t.readings.length, 5 + t.fractions.length];
   const vs = Voice.voices.filter(v => (v.lang || '').toLowerCase().startsWith(T().code));
   main.innerHTML = `<section class="screen">${topbar(u.parentsT)}
     <div class="card"><h3>${esc(u.progress)} · ${P.avatar} ${esc(P.name)} · ⭐ ${P.stars}</h3>
       <div class="bars">${lv.map((l, i) => { const n = Math.min(levelStars(i), totals[i]); return `<div class="bar"><span>${l[2]} ${esc(l[0])}</span><div class="progress"><i style="width:${n / totals[i] * 100}%"></i></div><em>${n}/${totals[i]}</em></div>`; }).join('')}</div></div>
-    <div class="card"><h3>${esc(u.levelsT)}</h3><div class="badgerow">${['vowel', 'word', 'build', 'first', 'missing', 'rhyme', 'clap', 'odd', 'count', 'tapnum', 'color', 'shape', 'add', 'sub', 'feel', 'clock', 'day', 'animal', 'habitat'].map((g, i) => `<span class="badge on">${esc(u.games[[0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19][i]][0])}: ${level(g)}/3</span>`).join('')}</div><small style="color:var(--muted)">${esc(u.levelsHelp)} · 🔥 ${P.streak || 0} · ${esc(u.reviewsN)}: ${P.reviews || 0}</small></div>
+    <div class="card"><h3>${esc(u.levelsT)}</h3><div class="badgerow">${['vowel', 'word', 'build', 'first', 'missing', 'rhyme', 'clap', 'odd', 'count', 'tapnum', 'color', 'shape', 'add', 'sub', 'feel', 'clock', 'day', 'animal', 'habitat', 'money', 'write', 'body', 'weather', 'read', 'mult', 'frac'].map((g, i) => `<span class="badge on">${esc(u.games[[0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26][i]][0])}: ${level(g)}/3</span>`).join('')}</div><small style="color:var(--muted)">${esc(u.levelsHelp)} · 🔥 ${P.streak || 0} · ${esc(u.reviewsN)}: ${P.reviews || 0}</small></div>
     <div class="card"><h3>${esc(u.weakT)}</h3>${weakList()}</div>
     <div class="card"><h3>${esc(u.badges)}</h3><div class="badgerow">${BADGES.map(b => `<span class="badge ${P.badges && P.badges[b] ? 'on' : ''}">🏅 ${esc(u.badgeNames[b])}</span>`).join('')}</div></div>
     <div class="card"><h3>${esc(u.settings)}</h3>
@@ -1009,7 +1157,7 @@ function itemLabel(key) { const t = T(); const [kind, id] = key.split(/:(.+)/); 
     case 'missing': { const m = find(t.missing); return [U().games[5][0], m ? id + ' ' + m[1] : id]; }
     case 'trace': return [lv[6][0], id];
     case 'story': { const st = t.stories[+id]; return [lv[5][0], st ? st.title + ' ' + st.cover : id]; }
-    case 'num': return [U().games[9][0], id]; case 'color': return [U().games[11][0], id]; case 'math': return [U().games[id.includes('+') ? 13 : 14][0], id.replace('-', ' − ').replace('+', ' + ')]; case 'emo': return [U().games[15][0], id]; case 'time': return [U().games[id.startsWith('h') ? 16 : 17][0], id.replace(/^h/, '🕒 ')]; case 'sci': return [U().games[18][0], id]; case 'rhyme': return [U().games[6][0], id]; case 'clap': { const c = t.claps.find(x => x[0] === id); return [U().games[7][0], c ? id + ' ' + c[1] : id]; } case 'odd': return [U().games[8][0], id];
+    case 'num': return [U().games[9][0], id]; case 'color': return [U().games[11][0], id]; case 'math': return [U().games[id.includes('+') ? 13 : 14][0], id.replace('-', ' − ').replace('+', ' + ')]; case 'emo': return [U().games[15][0], id]; case 'time': return [U().games[id.startsWith('h') ? 16 : 17][0], id.replace(/^h/, '🕒 ')]; case 'sci': return [U().games[18][0], id]; case 'money': return [U().games[20][0], id + '¢']; case 'write': return [U().games[21][0], id]; case 'body': return [U().games[22][0], id]; case 'read': return [U().games[24][0], (T().readings[+id] || {}).title || id]; case 'mult': return [U().games[id.includes('/') ? 26 : 25][0], id]; case 'rhyme': return [U().games[6][0], id]; case 'clap': { const c = t.claps.find(x => x[0] === id); return [U().games[7][0], c ? id + ' ' + c[1] : id]; } case 'odd': return [U().games[8][0], id];
     default: return [kind, id]; } }
 function weakList() { const e = (P && P.errors) || {}, h = (P && P.hits) || {};
   const rows = Object.keys(e).map(k => ({ k, e: e[k], h: h[k] || 0 })).filter(r => r.e > 0).sort((a, b) => (b.e / (b.e + b.h)) - (a.e / (a.e + a.h)) || b.e - a.e).slice(0, 10);
@@ -1019,7 +1167,7 @@ function weakList() { const e = (P && P.errors) || {}, h = (P && P.hits) || {};
 function practice(key) { const [kind, id] = key.split(/:(.+)/); const t = T(); Voice.stop();
   switch (kind) { case 'vowel': gameVowel(t.vowels.findIndex(v => v[0] === id)); break; case 'letter': gameFirst(id); break; case 'word': gameWord(id); break;
     case 'build': gameBuild(id); break; case 'missing': gameMissing(id); break; case 'trace': traceScreen(id); break; case 'story': storyScreen(+id); break;
-    case 'rhyme': gameRhyme(); break; case 'clap': gameClap(); break; case 'odd': gameOdd(); break; case 'num': gameCount(id); break; case 'color': { if (T().shapes.find(x => x[0] === id)) gameShape(id); else gameColor(id); break; } case 'math': { if (id.includes('+')) gameAdd(); else gameSub(); break; } case 'emo': gameFeel(); break; case 'time': { if (id.startsWith('h')) gameClock(); else gameDay(); break; } case 'sci': gameAnimalSound(); break; default: home(); } }
+    case 'rhyme': gameRhyme(); break; case 'clap': gameClap(); break; case 'odd': gameOdd(); break; case 'num': gameCount(id); break; case 'color': { if (T().shapes.find(x => x[0] === id)) gameShape(id); else gameColor(id); break; } case 'math': { if (id.includes('+')) gameAdd(); else gameSub(); break; } case 'emo': gameFeel(); break; case 'time': { if (id.startsWith('h')) gameClock(); else gameDay(); break; } case 'sci': gameAnimalSound(); break; case 'money': gameMoney(); break; case 'write': gameWrite(); break; case 'body': { if (T().weatherKinds.find(w => w[0] === id)) gameWeather(); else gameBody(); break; } case 'read': gameRead(+id); break; case 'mult': { if (id.includes('/')) gameFrac(); else gameMult(); break; } default: home(); } }
 
 /* Pantalla de bienvenida: el primer toque desbloquea el audio del teléfono; después la paloma saluda. */
 function showGate(then) { const g = $('#startGate'); if (!g) { then(); return; } g.hidden = false; $('#startName').textContent = P ? P.name : ''; $('#startText').textContent = U().tapStart;
@@ -1040,7 +1188,7 @@ Diag.log('session', 'inicio ' + APP_VERSION, { lang: settings.lang });
 Clips.load(); Sfxfile.load(); Voice.init();
 P = profiles.find(p => p.id === currentId) || null;
 setHeader();
-function openScreen(name) { const map = { vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, parentsScreen, gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, reviewGame, numbersScreen, gameCount, gameTapNum, colorsScreen, gameColor, gameShape, mathScreen, gameAdd, gameSub, emotionsScreen, gameFeel, timeScreen, gameClock, gameDay, scienceScreen, gameAnimalSound, gameHabitat, songsScreen };
+function openScreen(name) { const map = { vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, parentsScreen, gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, reviewGame, numbersScreen, gameCount, gameTapNum, colorsScreen, gameColor, gameShape, mathScreen, gameAdd, gameSub, emotionsScreen, gameFeel, timeScreen, gameClock, gameDay, scienceScreen, gameAnimalSound, gameHabitat, songsScreen, moneyScreen, writeScreen, bodyScreen, readScreen, multScreen, gameMoney, gameWrite, gameBody, gameWeather, gameRead, gameMult, gameFrac };
   if (name && name.startsWith('story:')) { const k = +name.slice(6); if (T().stories[k]) { storyScreen(k); return true; } }
   if (map[name]) { map[name](); return true; } return false; }
 let last = null; try { last = sessionStorage.getItem('lya:last'); } catch (e) {}

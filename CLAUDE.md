@@ -21,8 +21,9 @@ App educativa **gratuita, sin anuncios y sin internet** para niños de 2 a 7 añ
 10. Diagnóstico interno (`Diag`): nunca mostrar errores al niño; se ven solo en Zona de padres → "Diagnóstico" → Copiar.
 11. No romper a quien ya usa la app: cada publicación se actualiza sola al volver al inicio, nunca a mitad de un juego.
 
-## Módulos (14 puertas, 20 juegos)
-Vocales · Letras · Sílabas · Palabras · Frases · Cuentos (cortos + largos con 3 preguntas) · Trazar · Juegos · Números (1-20) · Colores y formas · Sumas y restas · Emociones · Hora y calendario · Ciencia (animales/planta/planetas) · Canciones (reproductor listo; audios pendientes).
+## Módulos (19 puertas, 27 juegos)
+Vocales · Letras · Sílabas · Palabras · Frases · Cuentos (cortos + largos con 3 preguntas) · Trazar · Juegos · Números (1-20) · Colores y formas · Sumas y restas · Emociones · Hora y calendario · Ciencia (animales/planta/planetas) · Canciones (reproductor listo; audios pendientes) · Dinero (USD: centavos y dólares) · Escribir (tocar letras en orden) · Mi cuerpo y el clima · Leer y entender (3 textos 8+, 4 preguntas) · Multiplicar (tablas 2-10) y fracciones.
+Puertas: colores `.d1`-`.d20` en styles.css (añade más si pasas de 20).
 
 ## Pendiente inmediato (voces)
 ```
@@ -31,10 +32,10 @@ python3 tools/generate_voices.py --list            # buscar el Voice ID de Danie
 python3 tools/generate_voices.py --only es --voice-es <ID_DANIELA>
 git add voces && git commit -m "voces es" && git push
 ```
-Luego inglés (elegir voz joven/alegre americana), `tools/generate_sfx.py` (sonidos de animales) y `tools/generate_songs.py --only vocales --lang es` como prueba de costo antes de generar las 10 canciones. Créditos disponibles: ~121.000/mes; voces es+en ≈ 76.000.
+Luego inglés (elegir voz joven/alegre americana), `tools/generate_sfx.py` (sonidos de animales) y `tools/generate_songs.py --only vocales --lang es` como prueba de costo antes de generar las 10 canciones. Créditos disponibles: ~121.000/mes; voces es ≈ 52.000, en ≈ 54.000 (los dos idiomas no caben en un mes: español primero, inglés el mes siguiente o comprar créditos extra).
 
 ## Después (orden acordado)
-Dinero (decidir moneda) · Escribir palabras · Ciencia 2 (cuerpo humano, clima) · Comprensión lectora 8+ · multiplicación/fracciones · empaquetado para tiendas.
+Canciones (audios con Eleven Music, `tools/generate_songs.py`) · sonidos reales de animales (`tools/generate_sfx.py`) · empaquetado para tiendas (Bubblewrap/Capacitor) · más contenido por módulo (palabras, cuentos, textos) según feedback de niños.
 
 ## Probar
 `python3 -m http.server 8080` en la carpeta y abrir http://localhost:8080. Hay pruebas automáticas con Playwright en el historial de commits (pantallas, juegos, globos). Antes de publicar: `node --check app.js data.js` y probar un juego completo.

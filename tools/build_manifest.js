@@ -57,6 +57,15 @@ for (const L of ['es', 'en']) {
   (t.animals || []).forEach(a => { add(a[0]); add(a[2]); add(fmt(s.animalSays, { a: cap(art(a[0])), s: a[2] })); add(fmt(s.livesIn, { a: cap(art(a[0])), h: a[3] })); add(fmt(s.eats, { a: cap(art(a[0])), f: a[4] })); add(fmt(s.gHabitat, { a: art(a[0]) })); });
   (t.plant || []).forEach(pp => add(fmt(s.partIs, { p: pp[0], d: pp[2] }))); if (s.plantGrow) add(s.plantGrow);
   (t.planets || []).forEach(pl => add(fmt(s.planetIs, { p: pl[0], d: pl[2] }))); add(u.noSongs);
+  // Dinero, escribir, cuerpo/clima, lectura, multiplicar/fracciones
+  if (t.coins) { const N = n => u.numbers[n - 1] || String(n); const cents = n => fmt(s.cents, { n: N(n) }); const money = c => c < 100 ? cents(c) : (Math.floor(c / 100) === 1 ? s.dollar1 : fmt(s.dollars, { n: N(Math.floor(c / 100)) })) + (c % 100 ? (L === 'es' ? ' con ' : ' and ') + cents(c % 100) : '');
+    t.coins.forEach(c => { add(c[0]); add(fmt(s.coinIs, { c: c[0], v: money(c[1]) })); }); const totals = new Set(); const vals = t.coins.map(c => c[1]); vals.forEach(a => vals.forEach(b => { totals.add(a + b); vals.forEach(c => { totals.add(a + b + c); vals.forEach(d => totals.add(a + b + c + d)); }); })); [...totals].filter(x => x <= 2000).forEach(x => add(fmt(s.totalIs, { v: money(x) })));
+    t.writeWords.forEach(w => { add(w[0]); add(fmt(s.wroteIt, { w: w[0] })); addSyl(t.syllabify[w[0]] || ''); }); 'abcdefghijklmnñopqrstuvwxyz'.split('').forEach(l => add(fmt(s.nextLetter, { l })));
+    t.bodyParts.forEach(bp => { add(bp[0]); add(fmt(s.bodyPart, { p: bp[0], d: bp[2] })); add(fmt(s.tapPart, { p: bp[0] })); });
+    t.weatherKinds.forEach(w => { add(w[0]); add(fmt(s.weatherIs, { w: w[0], d: w[2] })); add(fmt(s.gWeather, { w: w[0] })); add(fmt(s.wearIt, { w: w[0], c: w[3] })); }); t.wearOptions.forEach(o => add(o[0]));
+    t.readings.forEach((rd, i) => { add(rd.title); add(rd.text); rd.text.split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); rd.qs.forEach(q => { add(q[0]); q[1].forEach(add); }); }); for (let n = 1; n <= 4; n++) add(fmt(s.readQ, { n }));
+    [2, 3, 4, 5, 6, 7, 8, 9, 10].forEach(b => { add(fmt(s.multTable, { n: b })); for (let a = 1; a <= 10; a++) { add(fmt(s.multQ, { a, b })); add(fmt(s.multAns, { a, b, c: a * b })); } }); add(s.mult.split('.')[0] + '.');
+    t.fractions.forEach(f => { add(f[0]); add(fmt(s.fracIs, { f: f[0], d: f[4] })); }); }
   // Animales del perfil
   Object.values(t.avatarNames || {}).forEach(n => { add(n); add(fmt(s.animalIs, { a: n })); });
   // Saludo sin nombre (el nombre del niño se dice con la voz del teléfono)

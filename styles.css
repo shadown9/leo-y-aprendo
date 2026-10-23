@@ -36,11 +36,15 @@ main{flex:1;display:flex;flex-direction:column;gap:14px;min-height:0}
 .home{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start}
 .door{border:0;border-radius:24px;padding:18px 10px;color:#fff;font-family:var(--display);font-weight:700;font-size:1.2rem;position:relative;
   display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--shadow);cursor:pointer;transition:transform .1s;min-width:0}
+.door{background:linear-gradient(160deg,var(--o),var(--i))}
 .door .big{font-size:2.6rem;line-height:1}
 .door small{font-family:var(--body);font-weight:800;font-size:.75rem;opacity:.92;letter-spacing:.5px;text-transform:uppercase}
 .door .lvstars{position:absolute;top:8px;right:10px;font-size:.8rem;background:rgba(0,0,0,.18);border-radius:99px;padding:2px 8px;font-variant-numeric:tabular-nums}
 .d1{background:linear-gradient(160deg,var(--a),#ff8e53)} .d2{background:linear-gradient(160deg,var(--e),#ffd166)} .d3{background:linear-gradient(160deg,var(--i),#38d9a9)} .d4{background:linear-gradient(160deg,var(--o),#6ec1ff)}
 .d5{background:linear-gradient(160deg,var(--u),#ff7ac8)} .d6{background:linear-gradient(160deg,#ff8e53,var(--e))} .d7{background:linear-gradient(160deg,#38d9a9,var(--o))} .d8{background:linear-gradient(160deg,#ff7ac8,var(--a))}
+.d9{background:linear-gradient(160deg,#ff6b6b,#b56fe3)} .d10{background:linear-gradient(160deg,#ffb400,#2ec4b6)} .d11{background:linear-gradient(160deg,#5b8def,#b56fe3)} .d12{background:linear-gradient(160deg,#ff8e53,#ff6b6b)}
+.d13{background:linear-gradient(160deg,#2ec4b6,#ffb400)} .d14{background:linear-gradient(160deg,#b56fe3,#5b8def)} .d15{background:linear-gradient(160deg,#38d9a9,#2ec4b6)} .d16{background:linear-gradient(160deg,#ff7ac8,#ffb400)}
+.d17{background:linear-gradient(160deg,#6ec1ff,#2ec4b6)} .d18{background:linear-gradient(160deg,#ffd166,#ff8e53)} .d19{background:linear-gradient(160deg,#ff6b6b,#5b8def)} .d20{background:linear-gradient(160deg,#b56fe3,#ff7ac8)}
 /* screens */
 .topbar{display:flex;align-items:center;gap:10px}
 .back{background:var(--card);border:0;border-radius:14px;width:46px;height:46px;font-size:1.3rem;box-shadow:var(--shadow);cursor:pointer;flex:none}
@@ -237,6 +241,14 @@ canvas.trace{max-width:min(92vw,520px)}
 .lyrics{max-height:40vh;overflow:auto;width:100%;padding:6px 0}
 .lyrics .line{font-family:var(--display);font-size:1.3rem;margin:4px 0;padding:6px 10px;border-radius:12px;transition:background .2s}
 .lyrics .line.hl{background:var(--e);color:#2b2340}
+/* dinero, lectura, tablas, grupos */
+.coin{display:inline-flex;flex-direction:column;align-items:center;line-height:1;gap:2px}.coin b{font-family:var(--display);font-size:.8rem;background:var(--e);color:#2b2340;border-radius:99px;padding:2px 7px}.coin.bill b{background:var(--good);color:#fff}
+.reading{font-family:var(--body);font-weight:600;font-size:1.25rem;line-height:1.7;text-align:left;max-width:100%}
+.reading .w{border:0;background:transparent;font:inherit;padding:0 2px;border-radius:6px;cursor:pointer}.reading .w.hl{background:var(--e);color:#2b2340}
+.tablerows{display:flex;flex-direction:column;gap:6px;width:100%}
+.trow{border:0;background:var(--bg);border-radius:12px;padding:8px 12px;font-family:var(--display);font-size:1.3rem;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;text-align:left}
+.trow span{font-size:.7rem;color:var(--o);letter-spacing:1px}.trow.hl{background:var(--e);color:#2b2340}
+.groups{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.grp{background:var(--bg);border-radius:12px;padding:6px 8px;font-size:1.4rem;letter-spacing:2px}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
 .confetti i{position:absolute;top:-20px;width:12px;height:12px;border-radius:3px;animation:fall 1.3s linear forwards}
