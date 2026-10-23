@@ -25,7 +25,7 @@ button:focus-visible{outline:3px solid var(--o);outline-offset:2px}
 main{flex:1;display:flex;flex-direction:column;gap:14px;min-height:0}
 .screen{display:flex;flex-direction:column;gap:14px;flex:1;animation:in .25s ease}
 @keyframes in{from{opacity:0;transform:translateY(6px)}}
-.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:16px;font-family:var(--display);z-index:60;max-width:92vw;text-align:center;animation:in .2s}
+.toast{position:fixed;left:50%;top:max(76px,calc(env(safe-area-inset-top,0px) + 76px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:16px;font-family:var(--display);z-index:60;max-width:92vw;text-align:center;animation:in .2s}
 .banner{background:var(--card);border-left:6px solid var(--e);border-radius:14px;padding:10px 14px;font-size:.95rem;display:flex;gap:10px;align-items:center}
 .banner button{margin-left:auto}
 /* home */
@@ -244,12 +244,12 @@ canvas.trace{max-width:min(92vw,520px)}
 /* dinero, lectura, tablas, grupos */
 .coin{display:inline-flex;align-items:center;justify-content:center;line-height:1}.coin svg{display:block;filter:drop-shadow(0 3px 3px rgba(0,0,0,.25))}
 .countrow .cnt.coin{padding:0;display:inline-flex;align-items:center;justify-content:center}
-.plant .pp{transition:opacity .2s,filter .2s;cursor:pointer}.plant.sel .pp{opacity:.3}.plant.sel .pp.on{opacity:1;filter:drop-shadow(0 0 8px var(--e))}
+.plant .pp,.body .bp{transition:opacity .2s,filter .2s;cursor:pointer}.plant.sel .pp,.body.sel .bp{opacity:.3}.plant.sel .pp.on,.body.sel .bp.on{opacity:1;filter:drop-shadow(0 0 8px var(--e))}
 .reading{font-family:var(--body);font-weight:600;font-size:1.25rem;line-height:1.7;text-align:left;max-width:100%}
 .reading .w{border:0;background:transparent;font:inherit;padding:0 2px;border-radius:6px;cursor:pointer}.reading .w.hl{background:var(--e);color:#2b2340}
 .tablerows{display:flex;flex-direction:column;gap:6px;width:100%}
 .trow{border:0;background:var(--bg);border-radius:12px;padding:8px 12px;font-family:var(--display);font-size:1.3rem;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;text-align:left}
-.trow span{font-size:.7rem;color:var(--o);letter-spacing:1px}.trow.hl{background:var(--e);color:#2b2340}
+.trow span{font-size:1rem;color:var(--o);letter-spacing:1px;white-space:nowrap}.trow.hl{background:var(--e);color:#2b2340}
 .groups{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.grp{background:var(--bg);border-radius:12px;padding:6px 8px;font-size:1.4rem;letter-spacing:2px}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
@@ -259,3 +259,34 @@ canvas.trace{max-width:min(92vw,520px)}
 @keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (min-width:640px){.home{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}.memo{grid-template-columns:repeat(4,minmax(0,140px));justify-content:center}}
+/* TODO GRANDE (regla del Jefe): letras grandes, contraste alto y aprovechar toda la pantalla. Estas reglas van al final para ganar a las anteriores. */
+h1{font-size:1.7rem}
+.pill{font-size:1.15rem;min-height:46px;padding:8px 15px}
+.mascot .owl{font-size:3.2rem}.mascot p{font-size:clamp(1.3rem,5.2vw,1.6rem);line-height:1.25}
+.title{font-size:1.65rem}.back{width:56px;height:56px;font-size:1.6rem}
+.prompt{font-size:clamp(1.3rem,5.5vw,1.6rem);color:var(--fg);opacity:.9}
+.tile{font-size:2.6rem;min-height:96px}.tile .lbl{font-size:1.3rem;color:var(--fg)}.tile .pic{font-size:2.6rem}
+.grid.cubes .tile .lbl{font-size:clamp(1.3rem,5.5vw,1.6rem)}
+.grid.cubes .storycard .lbl{font-size:clamp(1.3rem,5.5vw,1.6rem)!important}
+.door{font-size:clamp(1.35rem,5.5vw,1.6rem);min-height:clamp(150px,21vh,200px);padding:22px 8px}
+.door .big{font-size:3.4rem}.door small{font-size:.95rem}.door .lvstars{font-size:1rem}
+.door.review{min-height:0;font-size:1.5rem;padding-right:76px}
+.feedback{font-size:1.7rem}
+.stage .sub{font-size:1.3rem;color:var(--fg);opacity:.85}
+.stage .word[style*="letter-spacing:0"]{font-size:clamp(1.7rem,7vw,2.3rem)!important;line-height:1.3}
+#area .tile[style*="1.25rem"]{font-size:clamp(1.5rem,6.5vw,2rem)!important}
+.btn{font-size:1.3rem;min-height:56px}.btn.big{font-size:1.6rem}
+.memo .tile .lbl{font-size:1.2rem}
+.pager i{width:14px;height:14px}
+.gatecard{font-size:1.7rem}.gatecard b{font-size:2.4rem}
+.lyrics{max-height:46vh}.lyrics .line{font-size:clamp(1.5rem,6.5vw,1.9rem);padding:8px 12px}
+.reading{font-size:clamp(1.45rem,6vw,1.8rem);line-height:1.6}
+.trow{font-size:1.55rem;padding:10px 14px}.trow span{font-size:1.25rem}
+.grp{font-size:1.9rem;padding:8px 10px}
+.countrow .cnt{width:76px;height:76px;font-size:2.7rem;border-radius:18px}.countrow .cnt small{font-size:1.05rem}
+.countrow.big span{font-size:clamp(2.6rem,11vw,3.4rem)}
+.claps{font-size:2rem}
+.slot{min-width:92px;height:96px;font-size:2.9rem}.piece{min-width:100px;height:100px;font-size:2.9rem}
+#numgrid.cubes .tile{min-height:80px;font-size:clamp(2.2rem,9vw,3rem)}
+#abc.cubes .tile{min-height:var(--h,88px);font-size:clamp(2.6rem,11vw,3.4rem)}
+.banner{font-size:1.1rem}

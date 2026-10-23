@@ -436,10 +436,12 @@ function traceScreen(startLetter) { Diag.crumb('traceScreen');
   const colors = ['#ff6b6b', '#ffb400', '#2ec4b6', '#5b8def', '#b56fe3']; let strokeColor = colors[0];
   function draw() { const ch = upper ? L : L.toLowerCase();
     $$('#lchips .chip').forEach(b => b.classList.toggle('on', b.dataset.l === L)); $('#caseU').classList.toggle('on', upper); $('#caseL').classList.toggle('on', !upper); $('#caseU').hidden = $('#caseL').hidden = isDigit();
-    gctx.clearRect(0, 0, 600, 600); gctx.font = '700 420px Fredoka, Nunito, Arial, sans-serif'; gctx.textAlign = 'center'; gctx.textBaseline = 'middle'; gctx.fillStyle = '#000'; gctx.fillText(ch, 300, 320);
-    ctx.clearRect(0, 0, 600, 600); ctx.save(); ctx.globalAlpha = .18; ctx.drawImage(guide, 0, 0); ctx.restore();
+    // La guía usa el color del texto del tema (en oscuro, claro): si no, en modo oscuro no se ve por dónde trazar.
+    const fg = (getComputedStyle(document.documentElement).getPropertyValue('--fg') || '#2b2340').trim();
+    gctx.clearRect(0, 0, 600, 600); gctx.font = '700 420px Fredoka, Nunito, Arial, sans-serif'; gctx.textAlign = 'center'; gctx.textBaseline = 'middle'; gctx.fillStyle = fg; gctx.fillText(ch, 300, 320);
+    ctx.clearRect(0, 0, 600, 600); ctx.save(); ctx.globalAlpha = .22; ctx.drawImage(guide, 0, 0); ctx.restore();
     // dashed outline so the child sees the path
-    ctx.save(); ctx.globalAlpha = .5; ctx.font = gctx.font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 4; ctx.setLineDash([14, 10]); ctx.strokeStyle = '#7a6f8a'; ctx.strokeText(ch, 300, 320); ctx.restore();
+    ctx.save(); ctx.globalAlpha = .65; ctx.font = gctx.font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 5; ctx.setLineDash([14, 10]); ctx.strokeStyle = fg; ctx.strokeText(ch, 300, 320); ctx.restore();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 34; $('#fb').textContent = ''; }
   let drawing = false, last = null; const pt = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * 600 / r.width, y: (e.clientY - r.top) * 600 / r.height }; };
   cv.onpointerdown = e => { drawing = true; last = pt(e); strokeColor = colors[Math.floor(Math.random() * 5)]; cv.setPointerCapture(e.pointerId); ctx.strokeStyle = strokeColor; ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(last.x + .1, last.y); ctx.stroke(); };
@@ -700,7 +702,7 @@ function reviewGame() { Diag.crumb('reviewGame'); const segs = reviewPlan(); let
   const next = won => { total += won; i++; if (i < segs.length) run(); else {
       P.lastReview = todayKey(); P.streak = (P.streakDay && (Date.now() - P.streakDay) < 2 * 86400000) ? (P.streak || 0) + 1 : 1; P.streakDay = Date.now(); saveProfiles(); P.reviews = (P.reviews || 0) + 1; saveProfiles();
       const sh = roundShell(U().reviewT, 1); inReview = false; finish(sh, total, reviewGame); const st = $('#guideText'); if (st) st.textContent = '🔥 ' + P.streak; } };
-  const run = () => { const sgm = segs[i]; GAME_FNS[sgm.fn](sgm.focus, { rounds: 2, next, part: true, quiet: i > 0 }); const p = $('#guideText'); if (p) p.textContent = U().reviewT + ' ' + (i + 1) + '/' + segs.length; };
+  const run = () => { const sgm = segs[i]; GAME_FNS[sgm.fn](sgm.focus, { rounds: 2, next, part: true, quiet: i > 0 }); const p = $('#guideText'); if (p) p.textContent = (i + 1) + '/' + segs.length + ' · ' + p.textContent; };
   Voice.seq([S().reviewIntro, 400], run);
 }
 Object.assign(GAME_FNS, { gameVowel, gameWord, gameBuild, gameFirst, gameMissing, gameSyl, gameRhyme, gameClap, gameOdd });
@@ -792,7 +794,7 @@ function gameShape(focus, opts) { Diag.crumb('gameShape'); opts = opts || {};
     const optsS = shuffle([ans].concat(pick(t.shapes.filter(x => x !== ans), nOpts - 1)));
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(fmt(s.gShape, { s: ans[0] }))}</p>
       <div class="grid">${optsS.map((x, i) => `<button class="tile keep" type="button" data-s="${esc(x[0])}" style="--cube:var(--card);color:${CUBE_COLORS[i % CUBE_COLORS.length]}">${shapeSvg(x[1], 'currentColor', 90)}${L === 1 ? `<span class="lbl" style="color:var(--fg)">${esc(caseIt(x[0]))}</span>` : ''}</button>`).join('')}</div>`;
-    bigOpts(sh.area); const hear = () => Voice.seq([fmt(s.gShape, { s: ans[0] })]); $('#hear').onclick = hear; askOnce(opts, r, fmt(s.gShape, { s: ans[0] }), hear);
+    bigOpts(sh.area); if (!opts.part) $('#guideText').textContent = fmt(s.gShape, { s: ans[0] }); const hear = () => Voice.seq([fmt(s.gShape, { s: ans[0] })]); $('#hear').onclick = hear; askOnce(opts, r, fmt(s.gShape, { s: ans[0] }), hear);
     $$('[data-s]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.s === ans[0]) { if (tries === 0) hit('color:' + ans[0]); adapt('shape', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: ans[0], rate: .8 }, 300]); if (tries === 0) won++; } else { tries++; miss('color:' + ans[0]); if (tries === 1) adapt('shape', false); Voice.seq([{ t: b.dataset.s, rate: .8 }]); wrong(sh, b, null, tries, `[data-s="${ans[0]}"]`); } }); }
   $('#guideText').textContent = fmt(s.gShape, { s: '…' }); round();
 }
@@ -862,17 +864,24 @@ function clockSvg(h, m, size) { size = size || 220; const ha = ((h % 12) + m / 6
     <line x1="100" y1="100" x2="${100 + 40 * Math.sin(ha * Math.PI / 180)}" y2="${100 - 40 * Math.cos(ha * Math.PI / 180)}" stroke="var(--a)" stroke-width="10" stroke-linecap="round"/><circle cx="100" cy="100" r="7" fill="var(--fg)"/></svg>`; }
 function timeText(h, m) { const s = S(), n = U().numbers; if (h === 1) return m === 0 ? s.oneOclock : s.oneHalf; return fmt(m === 0 ? s.oclock : s.half, { h: n[h - 1] }); }
 function timeScreen() { Diag.crumb('timeScreen');
-  const t = T(), u = U(), s = S(), L = settings.lang;
+  const t = T(), u = U(), s = S(), L = settings.lang; const todayIdx = (new Date().getDay() + 6) % 7;
   main.innerHTML = `<section class="screen">${topbar(u.timeT)}${guideHtml(s.time)}
     <p class="prompt">🕒 ${esc(u.clockT)}</p><div class="stage" id="clock">${clockSvg(3, 0)}<div class="word" id="ctext" style="font-size:1.6rem;letter-spacing:0">${esc(timeText(3, 0))}</div></div>
+    <div class="row" style="margin:6px 0"><button class="chip on" id="chipO" type="button">${esc(u.onTheHour)}</button><button class="chip" id="chipH" type="button">${esc(u.halfPast)}</button></div>
     <div class="grid" id="hours">${Array.from({ length: 12 }, (_, i) => `<button class="tile" type="button" data-h="${i + 1}">${i + 1}</button>`).join('')}</div>
-    <p class="prompt">📅 ${esc(u.daysT)}</p><div class="grid" id="days">${t.days.map((d, i) => `<button class="tile ${has('time:' + L + ':' + d) ? 'done' : ''}" type="button" data-d="${i}"><span class="lbl">${esc(caseIt(d))}</span></button>`).join('')}</div>
+    <p class="prompt">📅 ${esc(u.daysT)}</p><div class="grid" id="days">${t.days.map((d, i) => `<button class="tile ${has('time:' + L + ':' + d) ? 'done' : ''}" type="button" data-d="${i}"><span class="pic" style="font-size:1.3rem;opacity:.85">${i + 1}${i === todayIdx ? ' ⭐ ' + esc(u.today) : ''}</span><span class="lbl">${esc(caseIt(d))}</span></button>`).join('')}</div>
     <p class="prompt">🗓️ ${esc(u.monthsT)}</p><div class="grid" id="months">${t.months.map((m, i) => `<button class="tile keep" type="button" data-m="${i}" style="--cube:var(--card)"><span class="pic">${m[1]}</span><span class="lbl" style="color:var(--fg)">${esc(caseIt(m[0]))}</span></button>`).join('')}</div></section>`;
   bigOpts(main, '#hours', 4); bigOpts(main, '#days', 2); bigOpts(main, '#months', 3); $('#hours').style.setProperty('--h', '84px'); $('#days').style.setProperty('--h', '84px'); $('#months').style.setProperty('--h', '104px');
-  let half = false;
-  $$('#hours .tile').forEach(b => b.onclick = () => { const h = +b.dataset.h; Sfx.tap(); half = !half && b._last; b._last = true; $$('#hours .tile').forEach(x => { if (x !== b) x._last = false; }); const m = half ? 30 : 0;
-    $('#clock').innerHTML = clockSvg(h, m) + `<div class="word" id="ctext" style="font-size:1.6rem;letter-spacing:0">${esc(timeText(h, m))}</div>`; award(1, 'time:' + L + ':h' + h); $('#guideText').textContent = timeText(h, m); Voice.seq([timeText(h, m)]); $('#clock').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
-  $$('#days .tile').forEach(b => b.onclick = () => { const d = t.days[+b.dataset.d]; Sfx.tap(); b.classList.add('done'); award(1, 'time:' + L + ':' + d); const today = t.days[(new Date().getDay() + 6) % 7]; $('#guideText').textContent = d; Voice.seq([{ t: d, rate: .8 }].concat(d === today ? [500, fmt(s.dayIs, { d })] : [])); });
+  let half = false, curH = 3;
+  const showClock = () => { const m = half ? 30 : 0; $('#clock').innerHTML = clockSvg(curH, m) + `<div class="word" id="ctext" style="font-size:1.6rem;letter-spacing:0">${esc(timeText(curH, m))}</div>`; $('#guideText').textContent = timeText(curH, m); Voice.seq([timeText(curH, m)]); };
+  const setHalf = v => { half = v; $('#chipO').classList.toggle('on', !v); $('#chipH').classList.toggle('on', v); Sfx.tap(); showClock(); };
+  $('#chipO').onclick = () => setHalf(false); $('#chipH').onclick = () => setHalf(true);
+  $$('#hours .tile').forEach(b => b.onclick = () => { curH = +b.dataset.h; Sfx.tap(); $$('#hours .tile').forEach(x => x.classList.toggle('good', x === b)); award(1, 'time:' + L + ':h' + curH); showClock(); $('#clock').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+  // Los días se tocan en orden (lunes → domingo); si se salta uno, la pista dice qué día viene después. Siempre se oye el día tocado.
+  let nextDay = 0;
+  $$('#days .tile').forEach(b => b.onclick = () => { const i = +b.dataset.d, d = t.days[i]; Sfx.tap(); b.classList.add('done'); b.classList.remove('pulse'); award(1, 'time:' + L + ':' + d); $('#guideText').textContent = d;
+    if (i === nextDay) { b.classList.add('good'); nextDay++; const parts = [{ t: d, rate: .8 }].concat(i === todayIdx ? [500, fmt(s.dayIs, { d })] : []); if (nextDay === 7) { confetti(); parts.push(600, cheer()); nextDay = 0; setTimeout(() => $$('#days .tile').forEach(x => x.classList.remove('good')), 3000); } Voice.seq(parts); }
+    else { b.classList.add('bad'); setTimeout(() => b.classList.remove('bad'), 400); $$('#days .tile')[nextDay].classList.add('pulse'); Voice.seq([{ t: d, rate: .8 }, 400, nextDay ? fmt(s.afterIs, { a: t.days[nextDay - 1], b: t.days[nextDay] }) : s.daysHow]); } });
   $$('#months .tile').forEach(b => b.onclick = () => { const m = t.months[+b.dataset.m]; Sfx.tap(); award(1, 'time:' + L + ':' + m[0]); $('#guideText').textContent = m[0]; Voice.seq([{ t: m[0], rate: .8 }]); });
   wire(); guideSay(s.time + ' ' + s.clockHow);
 }
@@ -882,7 +891,7 @@ function gameClock(focus, opts) { Diag.crumb('gameClock'); opts = opts || {};
     sh.bar.style.width = (r / sh.n * 100) + '%'; const h = 1 + Math.floor(Math.random() * 12), m = L >= 2 && Math.random() < .5 ? 30 : 0; let tries = 0; firstSeen('time:h' + h);
     const others = []; while (others.length < 2) { const oh = 1 + Math.floor(Math.random() * 12), om = L >= 2 && Math.random() < .5 ? 30 : 0; if ((oh !== h || om !== m) && !others.some(o => o[0] === oh && o[1] === om)) others.push([oh, om]); }
     const optsT = shuffle([[h, m]].concat(others));
-    sh.area.innerHTML = `<div class="stage">${clockSvg(h, m, 200)}<button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(s.gClock)}</p>
+    sh.area.innerHTML = `<div class="stage">${clockSvg(h, m, 200)}<button class="btn big icon" id="hear" type="button">🔊</button></div>
       <div class="grid">${optsT.map(o => `<button class="tile" type="button" data-t="${o[0]}:${o[1]}" style="font-size:2.4rem">${o[0]}:${o[1] === 0 ? '00' : '30'}</button>`).join('')}</div>`;
     bigOpts(sh.area); const hear = () => Voice.seq([s.gClock]); $('#hear').onclick = hear; askOnce(opts, r, s.gClock, hear);
     $$('[data-t]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.t === h + ':' + m) { if (tries === 0) hit('time:h' + h); adapt('clock', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [timeText(h, m), 300]); if (tries === 0) won++; } else { tries++; miss('time:h' + h); if (tries === 1) adapt('clock', false); const [oh, om] = b.dataset.t.split(':').map(Number); Voice.seq([timeText(oh, om)]); wrong(sh, b, null, tries, `[data-t="${h}:${m}"]`); } }); }
@@ -895,7 +904,7 @@ function gameDay(focus, opts) { Diag.crumb('gameDay'); opts = opts || {};
     const optsD = shuffle([b].concat(pick(t.days.filter(d => d !== b && d !== a), nOpts - 1)));
     sh.area.innerHTML = `<div class="stage"><div class="word" style="font-size:2rem;letter-spacing:0">${esc(caseIt(a))} → <span style="color:var(--a)">?</span></div><button class="btn big icon" id="hear" type="button">🔊</button></div>
       <div class="grid">${optsD.map(d => `<button class="tile" type="button" data-d="${esc(d)}" style="font-size:1.6rem">${esc(caseIt(d))}</button>`).join('')}</div>`;
-    bigOpts(sh.area); const hear = () => Voice.seq([fmt(s.gDay, { d: a })]); $('#hear').onclick = hear; askOnce(opts, r, fmt(s.gDay, { d: a }), hear);
+    bigOpts(sh.area); if (!opts.part) $('#guideText').textContent = fmt(s.gDay, { d: a }); const hear = () => Voice.seq([fmt(s.gDay, { d: a })]); $('#hear').onclick = hear; askOnce(opts, r, fmt(s.gDay, { d: a }), hear);
     $$('[data-d]', sh.area).forEach(btn => btn.onclick = () => { if (btn.dataset.d === b) { if (tries === 0) hit('time:' + a); adapt('day', tries === 0); correct(sh, btn, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.afterIs, { a, b }), 300]); if (tries === 0) won++; } else { tries++; miss('time:' + a); if (tries === 1) adapt('day', false); Voice.seq([{ t: t.days.join(', '), rate: .85 }]); wrong(sh, btn, null, tries, `[data-d="${b}"]`); } }); }
   $('#guideText').textContent = fmt(s.gDay, { d: '…' }); round();
 }
@@ -966,7 +975,7 @@ function gameHabitat(focus, opts) { Diag.crumb('gameHabitat'); opts = opts || {}
     const optsH = shuffle([hab].concat(pick(t.habitats.filter(h => h !== hab), nOpts - 1)));
     sh.area.innerHTML = `<div class="stage"><div class="pic" style="font-size:5rem">${ans[1]}</div><div class="word">${esc(caseIt(ans[0]))}</div><button class="btn big icon" id="hear" type="button">🔊</button></div>
       <div class="grid">${optsH.map(h => `<button class="tile keep" type="button" data-h="${esc(h[0])}" style="--cube:var(--card)"><span class="pic">${h[1]}</span>${L < 3 ? `<span class="lbl" style="color:var(--fg)">${esc(caseIt(h[0] === 'jardin' ? (settings.lang === 'es' ? 'jardín' : 'garden') : h[0]))}</span>` : ''}</button>`).join('')}</div>`;
-    bigOpts(sh.area); const hear = () => Voice.seq([fmt(s.gHabitat, { a: withArt(ans[0]) })]); $('#hear').onclick = hear; askOnce(opts, r, fmt(s.gHabitat, { a: withArt(ans[0]) }), hear);
+    bigOpts(sh.area); if (!opts.part) $('#guideText').textContent = fmt(s.gHabitat, { a: withArt(ans[0]) }); const hear = () => Voice.seq([fmt(s.gHabitat, { a: withArt(ans[0]) })]); $('#hear').onclick = hear; askOnce(opts, r, fmt(s.gHabitat, { a: withArt(ans[0]) }), hear);
     $$('[data-h]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.h === hab[0]) { if (tries === 0) hit('sci:' + ans[0]); adapt('habitat', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.livesIn, { a: cap(withArt(ans[0])), h: ans[3] }), 300]); if (tries === 0) won++; } else { tries++; miss('sci:' + ans[0]); if (tries === 1) adapt('habitat', false); wrong(sh, b, hear, tries, `[data-h="${hab[0]}"]`); } }); }
   $('#guideText').textContent = fmt(s.gHabitat, { a: '…' }); round();
 }
@@ -1056,13 +1065,29 @@ function gameWrite(focus, opts) { Diag.crumb('gameWrite'); opts = opts || {};
   $('#guideText').textContent = s.gWrite; round();
 }
 /* ---------- Mi cuerpo y el clima ---------- */
+/* Niño dibujado; cada parte (data-b = índice de bodyParts) se ilumina al tocarla, en el dibujo o en el cubo. Así aprende DÓNDE está cada parte, no solo el nombre. */
+function bodySvg(size) { size = size || 150; return `<svg viewBox="0 0 160 260" width="${size}" height="${size * 260 / 160}" aria-hidden="true" class="body">
+  <g class="bp" data-b="4" fill="#f2c79a"><ellipse cx="44" cy="48" rx="8" ry="11"/><ellipse cx="116" cy="48" rx="8" ry="11"/></g>
+  <g class="bp" data-b="0"><circle cx="80" cy="46" r="34" fill="#f2c79a"/><path d="M48 36q32-26 64 0v-6q-32-22-64 0z" fill="#5a3a1e"/></g>
+  <g class="bp" data-b="1" fill="#2b2340"><circle cx="67" cy="42" r="4.5"/><circle cx="93" cy="42" r="4.5"/></g>
+  <g class="bp" data-b="2"><path d="M80 46v10h6" stroke="#c98a5a" stroke-width="3" fill="none" stroke-linecap="round"/></g>
+  <g class="bp" data-b="9"><rect x="70" y="63" width="20" height="5" rx="1.5" fill="#fff"/></g>
+  <g class="bp" data-b="3"><path d="M66 62q14 14 28 0" stroke="#c0392b" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+  <g fill="#5b8def"><rect x="18" y="90" width="22" height="72" rx="11"/><rect x="120" y="90" width="22" height="72" rx="11"/></g>
+  <g class="bp" data-b="7"><rect x="46" y="84" width="68" height="86" rx="22" fill="#5b8def"/><ellipse cx="80" cy="142" rx="22" ry="16" fill="#7fa6ff"/></g>
+  <g class="bp" data-b="8"><path d="M68 110c-7-9 7-18 12-8 5-10 19-1 12 8l-12 13z" fill="#ff5252"/></g>
+  <g class="bp" data-b="5" fill="#f2c79a"><circle cx="29" cy="170" r="12"/><circle cx="131" cy="170" r="12"/></g>
+  <g fill="#3b3f73"><rect x="52" y="168" width="22" height="66" rx="10"/><rect x="86" y="168" width="22" height="66" rx="10"/></g>
+  <g class="bp" data-b="6" fill="#2b2340"><ellipse cx="60" cy="242" rx="17" ry="9"/><ellipse cx="100" cy="242" rx="17" ry="9"/></g></svg>`; }
 function bodyScreen() { Diag.crumb('bodyScreen');
   const t = T(), u = U(), s = S(), L = settings.lang;
   main.innerHTML = `<section class="screen">${topbar(u.bodyT + ' · ' + u.weatherT)}${guideHtml(s.body)}
-    <p class="prompt">🧍 ${esc(u.bodyT)}</p><div class="grid" id="body">${t.bodyParts.map((bp, i) => `<button class="tile keep ${has('body:' + L + ':' + bp[0]) ? 'done' : ''}" type="button" data-b="${i}" style="--cube:var(--card)"><span class="pic">${bp[1]}</span><span class="lbl" style="color:var(--fg)">${esc(bp[0])}</span></button>`).join('')}</div>
+    <p class="prompt">🧍 ${esc(u.bodyT)}</p><div id="bodypic" style="text-align:center">${bodySvg(150)}</div><div class="grid" id="body">${t.bodyParts.map((bp, i) => `<button class="tile keep ${has('body:' + L + ':' + bp[0]) ? 'done' : ''}" type="button" data-b="${i}" style="--cube:var(--card)"><span class="pic">${bp[1]}</span><span class="lbl" style="color:var(--fg)">${esc(bp[0])}</span></button>`).join('')}</div>
     <p class="prompt">🌤️ ${esc(u.weatherT)}</p><div class="grid" id="weather">${t.weatherKinds.map((w, i) => `<button class="tile keep ${has('body:' + L + ':' + w[0]) ? 'done' : ''}" type="button" data-w="${i}" style="--cube:var(--card)"><span class="pic">${w[1]}</span><span class="lbl" style="color:var(--fg)">${esc(caseIt(w[0]))}</span></button>`).join('')}</div></section>`;
   bigOpts(main, '#body', 2); bigOpts(main, '#weather', 2); $('#body').style.setProperty('--h', '96px'); $('#weather').style.setProperty('--h', '100px');
-  $$('#body .tile').forEach(b => b.onclick = () => { const bp = t.bodyParts[+b.dataset.b]; Sfx.tap(); award(1, 'body:' + L + ':' + bp[0]); b.classList.add('done'); $('#guideText').textContent = fmt(s.bodyPart, { p: bp[0], d: bp[2] }); Voice.seq([fmt(s.bodyPart, { p: bp[0], d: bp[2] })]); });
+  const showBody = i => { const bp = t.bodyParts[i]; Sfx.tap(); award(1, 'body:' + L + ':' + bp[0]); const svg = $('#bodypic svg'); svg.classList.add('sel'); $$('.bp', svg).forEach(g => g.classList.toggle('on', +g.dataset.b === i)); $$('#body .tile').forEach((x, k) => { x.classList.toggle('good', k === i); if (k === i) x.classList.add('done'); });
+    $('#guideText').textContent = fmt(s.bodyPart, { p: bp[0], d: bp[2] }); Voice.seq([fmt(s.bodyPart, { p: bp[0], d: bp[2] })]); };
+  $$('#body .tile').forEach(b => b.onclick = () => showBody(+b.dataset.b)); $$('#bodypic .bp').forEach(g => g.onclick = () => { showBody(+g.dataset.b); $('#bodypic').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
   $$('#weather .tile').forEach(b => b.onclick = () => { const w = t.weatherKinds[+b.dataset.w]; Sfx.tap(); award(1, 'body:' + L + ':' + w[0]); b.classList.add('done'); $('#guideText').textContent = fmt(s.weatherIs, { w: w[0], d: w[2] }); Voice.seq([fmt(s.weatherIs, { w: w[0], d: w[2] })]); });
   wire(); guideSay(s.body);
 }
@@ -1084,7 +1109,7 @@ function gameWeather(focus, opts) { Diag.crumb('gameWeather'); opts = opts || {}
     const optsW = shuffle([ans].concat(pick(t.wearOptions.filter(o => o !== ans && o[1] !== ans[1]), nOpts - 1)));
     sh.area.innerHTML = `<div class="stage"><div class="pic" style="font-size:5rem">${w[1]}</div><div class="word">${esc(caseIt(w[0]))}</div><button class="btn big icon" id="hear" type="button">🔊</button></div>
       <div class="grid">${optsW.map(o => `<button class="tile keep" type="button" data-o="${esc(o[0])}" style="--cube:var(--card)"><span class="pic">${o[1]}</span>${L < 3 ? `<span class="lbl" style="color:var(--fg)">${esc(o[0])}</span>` : ''}</button>`).join('')}</div>`;
-    bigOpts(sh.area); const hear = () => Voice.seq([fmt(s.gWeather, { w: w[0] })]); $('#hear').onclick = hear; askOnce(opts, r, fmt(s.gWeather, { w: w[0] }), hear);
+    bigOpts(sh.area); if (!opts.part) $('#guideText').textContent = fmt(s.gWeather, { w: w[0] }); const hear = () => Voice.seq([fmt(s.gWeather, { w: w[0] })]); $('#hear').onclick = hear; askOnce(opts, r, fmt(s.gWeather, { w: w[0] }), hear);
     $$('[data-o]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.o === ans[0]) { if (tries === 0) hit('body:' + w[0]); adapt('weather', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.wearIt, { w: w[0], c: ans[0] }), 300]); if (tries === 0) won++; } else { tries++; miss('body:' + w[0]); if (tries === 1) adapt('weather', false); wrong(sh, b, hear, tries, `[data-o="${ans[0]}"]`); } }); }
   $('#guideText').textContent = fmt(s.gWeather, { w: '…' }); round();
 }
@@ -1122,9 +1147,9 @@ function multScreen() { Diag.crumb('multScreen');
     <div class="stage" id="stage" hidden></div>
     <p class="prompt">🍕 ${esc(u.fracT)}</p><div class="grid" id="fracs">${t.fractions.map((f, i) => `<button class="tile keep ${has('mult:' + L + ':' + f[1]) ? 'done' : ''}" type="button" data-f="${i}" style="--cube:var(--card)">${fracSvg(f[2], f[3], 70)}<span class="lbl" style="color:var(--fg)">${f[1]}</span></button>`).join('')}</div>
     <div class="row" style="margin-top:8px"><button class="btn" id="goMult" type="button">▶ ${esc(u.games[25][0])}</button><button class="btn alt" id="goFrac" type="button">▶ ${esc(u.games[26][0])}</button></div></section>`;
-  bigOpts(main, '#tables', 5); bigOpts(main, '#fracs', 3); $('#tables').style.setProperty('--h', '72px'); $('#fracs').style.setProperty('--h', '110px');
+  bigOpts(main, '#tables', 3); bigOpts(main, '#fracs', 3); $('#tables').style.setProperty('--h', '84px'); $('#fracs').style.setProperty('--h', '110px');
   $$('#tables .tile').forEach(b => b.onclick = () => { const n = +b.dataset.n; Sfx.tap(); award(1, 'mult:' + L + ':t' + n); const st = $('#stage'); st.hidden = false; const nums = u.numbers;
-    st.innerHTML = `<div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(s.multTable, { n }))}</div><div class="tablerows">${Array.from({ length: 10 }, (_, i) => `<button class="trow" type="button" data-a="${i + 1}">${n} × ${i + 1} = <b>${n * (i + 1)}</b><span>${'●'.repeat(Math.min(i + 1, 10))}</span></button>`).join('')}</div>`;
+    st.innerHTML = `<div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(s.multTable, { n }))}</div><div class="tablerows">${Array.from({ length: 10 }, (_, i) => `<button class="trow" type="button" data-a="${i + 1}">${n} × ${i + 1} = <b>${n * (i + 1)}</b><span>${Array.from({ length: i + 1 }, (_, k) => '●' + ((k + 1) % 5 === 0 ? ' ' : '')).join('').trim()}</span></button>`).join('')}</div>`;
     $$('.trow', st).forEach(x => x.onclick = () => { const a = +x.dataset.a; $$('.trow', st).forEach(y => y.classList.toggle('hl', y === x)); Voice.seq([fmt(s.multAns, { a: n, b: a, c: n * a })]); });
     Voice.seq([fmt(s.multTable, { n }), 400, s.mult.split('.')[0] + '.']); st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
   $$('#fracs .tile').forEach(b => b.onclick = () => { const f = t.fractions[+b.dataset.f]; Sfx.tap(); award(1, 'mult:' + L + ':' + f[1]); b.classList.add('done'); $('#guideText').textContent = fmt(s.fracIs, { f: f[0], d: f[4] }); Voice.seq([fmt(s.fracIs, { f: f[0], d: f[4] })]); });
@@ -1149,7 +1174,7 @@ function gameFrac(focus, opts) { Diag.crumb('gameFrac'); opts = opts || {};
   function round() { if (r === sh.n) { done(sh, won, () => gameFrac(focus), opts); return; }
     sh.bar.style.width = (r / sh.n * 100) + '%'; const ans = pool[Math.floor(Math.random() * pool.length)]; let tries = 0; firstSeen('mult:' + ans[1]);
     const optsF = shuffle([ans].concat(pick(t.fractions.filter(f => f !== ans), nOpts - 1)));
-    sh.area.innerHTML = `<div class="stage">${fracSvg(ans[2], ans[3], 170)}<button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(s.gFrac)}</p>
+    sh.area.innerHTML = `<div class="stage">${fracSvg(ans[2], ans[3], 170)}<button class="btn big icon" id="hear" type="button">🔊</button></div>
       <div class="grid">${optsF.map(f => `<button class="tile" type="button" data-f="${f[1]}" style="font-size:2.4rem">${f[1]}</button>`).join('')}</div>`;
     bigOpts(sh.area); const hear = () => Voice.seq([s.gFrac]); $('#hear').onclick = hear; askOnce(opts, r, s.gFrac, hear);
     $$('[data-f]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.f === ans[1]) { if (tries === 0) hit('mult:' + ans[1]); adapt('frac', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.fracIs, { f: ans[0], d: ans[4] }), 300]); if (tries === 0) won++; } else { tries++; miss('mult:' + ans[1]); if (tries === 1) adapt('frac', false); const o = t.fractions.find(f => f[1] === b.dataset.f); Voice.seq([{ t: o[0], rate: .85 }]); wrong(sh, b, null, tries, `[data-f="${ans[1]}"]`); } }); }
