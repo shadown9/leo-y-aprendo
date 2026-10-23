@@ -34,6 +34,9 @@ for (const L of ['es', 'en']) {
   // Frases y cuentos: la frase entera y cada palabra
   t.phrases.forEach(p => { add(p[0]); p[0].split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); });
   t.stories.forEach(st => { add(st.title); st.pages.forEach(pg => { add(pg[0]); pg[0].split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); }); add(st.q[0]); st.q[1].forEach(o => add(o[0])); });
+  // Números: palabras, dígitos, "este es el", "hay N cosas"
+  u.numbers.forEach((w, i) => { add(w); add(String(i + 1)); add(fmt(s.numberIs, { n: w })); (t.countThings || []).forEach(th => add(fmt(s.allCounted, { n: w, things: th[0] }))); });
+  (t.countThings || []).forEach(th => add(th[0]));
   // Animales del perfil
   Object.values(t.avatarNames || {}).forEach(n => { add(n); add(fmt(s.animalIs, { a: n })); });
   // Saludo sin nombre (el nombre del niño se dice con la voz del teléfono)

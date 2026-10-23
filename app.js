@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v17';
+const APP_VERSION = 'v18';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -174,7 +174,7 @@ function topbar(title) { return `<div class="topbar"><button class="back" type="
 function wire() { $$('[data-home]', main).forEach(b => b.onclick = () => { Voice.stop(); home(); }); }
 function setHeader() { $('#langBtn').textContent = '🌎 ' + T().toggle; $('#starCount').textContent = stars(); $('#profileBtn').textContent = P ? P.avatar : '🕊️'; document.documentElement.lang = settings.lang; }
 function levelStars(i) {
-  if (!P) return 0; const d = P.done, L = settings.lang, pre = ['vowel:', 'letter:', 'syl:', 'word:', 'phrase:', 'story:', 'trace:', 'game:'][i];
+  if (!P) return 0; const d = P.done, L = settings.lang, pre = ['vowel:', 'letter:', 'syl:', 'word:', 'phrase:', 'story:', 'trace:', 'game:', 'num:'][i];
   return Object.keys(d).filter(k => k.startsWith(pre) && (pre === 'trace:' || k.includes(':' + L + ':'))).length;
 }
 
@@ -219,7 +219,7 @@ function home() { if (window._pendingReload) { location.reload(); return; } Diag
     <button class="door review ${reviewDoneToday() ? 'donetoday' : ''}" type="button" id="reviewBtn"><span class="big">${reviewDoneToday() ? '✅' : '🎯'}</span>${esc(u.reviewT)}<small>${reviewDoneToday() ? esc(u.reviewDone) : esc(u.reviewSub)}</small><span class="lvstars">🔥 ${P.streak || 0}</span></button>
     <div class="home">${u.levels.map((d, i) => `<button class="door d${i + 1}" type="button" data-go="${i}"><span class="lvstars">⭐ ${levelStars(i)}</span><span class="big">${d[2]}</span>${esc(d[0])}<small>${esc(d[1])}</small></button>`).join('')}</div>
   </section>`;
-  $$('[data-go]', main).forEach(b => b.onclick = () => { Sfx.tap(); [vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen][+b.dataset.go](); });
+  $$('[data-go]', main).forEach(b => b.onclick = () => { Sfx.tap(); [vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, numbersScreen][+b.dataset.go](); });
   $('#reviewBtn').onclick = () => { Sfx.tap(); reviewGame(); };
   const greeting = fmt(u.hello, { name: P.name }) + ' ' + S().home;
   const sayGreeting = () => { $('#guideText').textContent = greeting; Voice.seq([settings.lang === 'es' ? '¡Hola!' : 'Hi!', 150, P.name, 400, S().home]); };
@@ -453,7 +453,7 @@ function gamesScreen() { Diag.crumb('gamesScreen');
   main.innerHTML = `<section class="screen">${topbar(u.gamesT)}
     ${guideHtml(S().games)}
     <div class="home">${u.games.map((g, i) => `<button class="door d${(i % 8) + 1}" type="button" data-g="${i}"><span class="big">${g[2]}</span>${esc(g[0])}<small>${esc(g[1])}</small></button>`).join('')}</div></section>`;
-  $$('[data-g]', main).forEach(b => b.onclick = () => { Sfx.tap(); [gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd][+b.dataset.g](); });
+  $$('[data-g]', main).forEach(b => b.onclick = () => { Sfx.tap(); [gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, gameCount, gameTapNum][+b.dataset.g](); });
   wire(); guideSay(S().games);
 }
 let roundWatch = null;
@@ -654,11 +654,11 @@ function reviewPlan() {
   const weak = Object.keys(e).filter(k => e[k] > 0).sort((a, b) => e[b] - e[a]);
   const stale = Object.keys(seen).filter(k => now - seen[k] > old && !weak.includes(k)).sort(() => Math.random() - .5);
   const keys = weak.slice(0, 4).concat(stale.slice(0, 4));
-  const map = { vowel: ['gameVowel', k => T().vowels.findIndex(v => v[0] === k)], word: ['gameWord', k => k], letter: ['gameFirst', k => k], missing: ['gameMissing', k => k], build: ['gameBuild', k => k], rhyme: ['gameRhyme', k => null], clap: ['gameClap', k => null], odd: ['gameOdd', k => null] };
+  const map = { vowel: ['gameVowel', k => T().vowels.findIndex(v => v[0] === k)], word: ['gameWord', k => k], letter: ['gameFirst', k => k], missing: ['gameMissing', k => k], build: ['gameBuild', k => k], rhyme: ['gameRhyme', k => null], clap: ['gameClap', k => null], odd: ['gameOdd', k => null], num: ['gameCount', k => k] };
   const segs = []; const used = new Set();
   keys.forEach(key => { const [kind, id] = key.split(/:(.+)/); const m = map[kind]; if (m && !used.has(m[0])) { used.add(m[0]); segs.push({ fn: m[0], focus: m[1](id) }); } });
   // Rellena hasta 4 segmentos con juegos variados (siempre hay repaso, aunque no haya fallos todavía)
-  ['gameVowel', 'gameFirst', 'gameRhyme', 'gameWord', 'gameClap', 'gameMissing', 'gameOdd'].forEach(fn => { if (segs.length < 4 && !used.has(fn)) { used.add(fn); segs.push({ fn, focus: null }); } });
+  ['gameVowel', 'gameFirst', 'gameRhyme', 'gameCount', 'gameWord', 'gameClap', 'gameMissing', 'gameOdd', 'gameTapNum'].forEach(fn => { if (segs.length < 4 && !used.has(fn)) { used.add(fn); segs.push({ fn, focus: null }); } });
   return segs.slice(0, 4);
 }
 const GAME_FNS = {};
@@ -671,6 +671,52 @@ function reviewGame() { Diag.crumb('reviewGame'); const segs = reviewPlan(); let
 }
 Object.assign(GAME_FNS, { gameVowel, gameWord, gameBuild, gameFirst, gameMissing, gameRhyme, gameClap, gameOdd });
 
+/* ---------- Números: contar tocando (correspondencia uno a uno), del 1 al 20 ---------- */
+function numbersScreen(startAt) { Diag.crumb('numbersScreen');
+  const t = T(), u = U(), s = S(), L = settings.lang; const nums = u.numbers; let n = startAt || 1;
+  main.innerHTML = `<section class="screen">${topbar(u.numbersT)}${guideHtml(s.numbers)}
+    <div class="grid" id="numgrid">${nums.map((w, i) => `<button class="tile ${has('num:' + L + ':' + (i + 1)) ? 'done' : ''}" type="button" data-n="${i + 1}">${i + 1}</button>`).join('')}</div>
+    <div class="stage" id="stage" hidden></div></section>`;
+  bigOpts(main, '#numgrid', 5);
+  function show(k) { n = k; const thing = t.countThings[(k - 1) % t.countThings.length]; const st = $('#stage'); st.hidden = false; let counted = 0;
+    st.innerHTML = `<div class="numbig" style="color:${CUBE_COLORS[(k - 1) % CUBE_COLORS.length]}">${k}</div><div class="word" style="font-size:1.6rem;letter-spacing:0">${esc(nums[k - 1])}</div>
+      <div class="countrow" id="countrow">${Array.from({ length: k }, (_, i) => `<button class="cnt" type="button" data-i="${i}">${thing[1]}</button>`).join('')}</div>
+      <div class="row"><button class="btn big icon" id="say" type="button">🔊</button><button class="btn icon" id="next" type="button">➡️</button></div>`;
+    $$('#numgrid .tile').forEach(b => b.classList.toggle('good', +b.dataset.n === k));
+    // Contar tocando: cada dibujo se cuenta una sola vez, en voz alta, y al final se dice el total.
+    $$('.cnt', st).forEach(b => b.onclick = () => { if (b.classList.contains('on')) return; b.classList.add('on'); counted++; b.insertAdjacentHTML('beforeend', `<small>${counted}</small>`); Sfx.tone(440 + counted * 40, 0, .15);
+      if (counted < k) Voice.seq([{ t: nums[counted - 1], rate: .9 }]);
+      else { award(1, 'num:' + L + ':' + k); confetti(); Voice.seq([{ t: nums[counted - 1], rate: .9 }, 400, fmt(s.allCounted, { n: nums[k - 1], things: thing[0] }), 300, cheer()]); $('#next').classList.add('pulse'); } });
+    $('#say').onclick = () => Voice.seq([fmt(s.numberIs, { n: nums[k - 1] }), 500, { t: String(k), rate: .8 }, 300, s.countThem]);
+    $('#next').onclick = () => { Sfx.tap(); if (k < nums.length) show(k + 1); else home(); };
+    $('#guideText').textContent = s.countThem; Voice.seq([fmt(s.numberIs, { n: nums[k - 1] }), 500, s.countThem]); st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  $$('#numgrid .tile').forEach(b => b.onclick = () => { Sfx.tap(); show(+b.dataset.n); });
+  wire(); if (startAt) show(startAt); else guideSay(s.numbers);
+}
+function gameCount(focus, opts) { Diag.crumb('gameCount'); opts = opts || {};
+  const t = T(), u = U(), s = S(); const nums = u.numbers; const sh = gameShell(u.games[9][0], opts, 6); let r = 0, won = 0; const L = level('count'); const max = [5, 10, 20][L - 1];
+  function round() { if (r === sh.n) { done(sh, won, () => gameCount(focus), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const k = (focus && r % 2 === 0) ? +focus : 1 + Math.floor(Math.random() * max); const thing = t.countThings[Math.floor(Math.random() * t.countThings.length)]; let tries = 0; firstSeen('num:' + k);
+    const cands = []; for (let i = Math.max(1, k - 3); i <= Math.min(max, k + 3); i++) if (i !== k) cands.push(i); const optsN = shuffle([k].concat(pick(cands, 2)));
+    sh.area.innerHTML = `<div class="stage"><div class="countrow big">${Array.from({ length: k }, () => `<span>${thing[1]}</span>`).join('')}</div><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(s.howMany)}</p>
+      <div class="grid">${optsN.map(v => `<button class="tile" type="button" data-n="${v}">${v}</button>`).join('')}</div>`;
+    bigOpts(sh.area); const hear = () => Voice.seq([s.howMany]); $('#hear').onclick = hear; askOnce(opts, r, s.gCount, hear);
+    $$('[data-n]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.n === k) { if (tries === 0) hit('num:' + k); adapt('count', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: nums[k - 1], rate: .85 }, 300, fmt(s.allCounted, { n: nums[k - 1], things: thing[0] }), 300]); if (tries === 0) won++; } else { tries++; miss('num:' + k); if (tries === 1) adapt('count', false); wrong(sh, b, hear, tries, `[data-n="${k}"]`); } }); }
+  $('#guideText').textContent = s.gCount; round();
+}
+function gameTapNum(focus, opts) { Diag.crumb('gameTapNum'); opts = opts || {};
+  const u = U(), s = S(); const nums = u.numbers; const sh = gameShell(u.games[10][0], opts, 6); let r = 0, won = 0; const L = level('tapnum'); const max = [5, 10, 20][L - 1]; const nOpts = L === 1 ? 3 : 4;
+  function round() { if (r === sh.n) { done(sh, won, () => gameTapNum(focus), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const k = (focus && r % 2 === 0) ? +focus : 1 + Math.floor(Math.random() * max); let tries = 0; firstSeen('num:' + k);
+    const cands = []; for (let i = 1; i <= max; i++) if (i !== k) cands.push(i); const optsN = shuffle([k].concat(pick(cands, nOpts - 1)));
+    sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big icon" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.hear)}</p>
+      <div class="grid">${optsN.map(v => `<button class="tile" type="button" data-n="${v}">${v}</button>`).join('')}</div>`;
+    bigOpts(sh.area); const hear = () => Voice.seq([{ t: nums[k - 1], rate: .85 }, 600, { t: nums[k - 1], rate: .85 }]); $('#hear').onclick = hear; askOnce(opts, r, s.gTapNum, hear);
+    $$('[data-n]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.n === k) { if (tries === 0) hit('num:' + k); adapt('tapnum', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: nums[k - 1], rate: .85 }, 300]); if (tries === 0) won++; } else { tries++; miss('num:' + k); if (tries === 1) adapt('tapnum', false); wrong(sh, b, hear, tries, `[data-n="${k}"]`); } }); }
+  $('#guideText').textContent = s.gTapNum; round();
+}
+Object.assign(GAME_FNS, { gameCount, gameTapNum });
+
 /* ---------- parents ---------- */
 function parentsScreen() { Diag.crumb('parentsScreen');
   const u = U(); const a = 3 + Math.floor(Math.random() * 6), b = 2 + Math.floor(Math.random() * 7);
@@ -681,12 +727,12 @@ function parentsScreen() { Diag.crumb('parentsScreen');
 }
 function parentsPanel() { Diag.crumb('parentsPanel');
   const t = T(), u = U(); const L = settings.lang; const lv = u.levels;
-  const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, 27, 10];
+  const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, 27, 10, 20];
   const vs = Voice.voices.filter(v => (v.lang || '').toLowerCase().startsWith(T().code));
   main.innerHTML = `<section class="screen">${topbar(u.parentsT)}
     <div class="card"><h3>${esc(u.progress)} · ${P.avatar} ${esc(P.name)} · ⭐ ${P.stars}</h3>
       <div class="bars">${lv.map((l, i) => { const n = Math.min(levelStars(i), totals[i]); return `<div class="bar"><span>${l[2]} ${esc(l[0])}</span><div class="progress"><i style="width:${n / totals[i] * 100}%"></i></div><em>${n}/${totals[i]}</em></div>`; }).join('')}</div></div>
-    <div class="card"><h3>${esc(u.levelsT)}</h3><div class="badgerow">${['vowel', 'word', 'build', 'first', 'missing', 'rhyme', 'clap', 'odd'].map((g, i) => `<span class="badge on">${esc(u.games[[0, 1, 2, 3, 5, 6, 7, 8][i]][0])}: ${level(g)}/3</span>`).join('')}</div><small style="color:var(--muted)">${esc(u.levelsHelp)} · 🔥 ${P.streak || 0} · ${esc(u.reviewsN)}: ${P.reviews || 0}</small></div>
+    <div class="card"><h3>${esc(u.levelsT)}</h3><div class="badgerow">${['vowel', 'word', 'build', 'first', 'missing', 'rhyme', 'clap', 'odd', 'count', 'tapnum'].map((g, i) => `<span class="badge on">${esc(u.games[[0, 1, 2, 3, 5, 6, 7, 8, 9, 10][i]][0])}: ${level(g)}/3</span>`).join('')}</div><small style="color:var(--muted)">${esc(u.levelsHelp)} · 🔥 ${P.streak || 0} · ${esc(u.reviewsN)}: ${P.reviews || 0}</small></div>
     <div class="card"><h3>${esc(u.weakT)}</h3>${weakList()}</div>
     <div class="card"><h3>${esc(u.badges)}</h3><div class="badgerow">${BADGES.map(b => `<span class="badge ${P.badges && P.badges[b] ? 'on' : ''}">🏅 ${esc(u.badgeNames[b])}</span>`).join('')}</div></div>
     <div class="card"><h3>${esc(u.settings)}</h3>
@@ -729,7 +775,7 @@ function itemLabel(key) { const t = T(); const [kind, id] = key.split(/:(.+)/); 
     case 'missing': { const m = find(t.missing); return [U().games[5][0], m ? id + ' ' + m[1] : id]; }
     case 'trace': return [lv[6][0], id];
     case 'story': { const st = t.stories[+id]; return [lv[5][0], st ? st.title + ' ' + st.cover : id]; }
-    case 'rhyme': return [U().games[6][0], id]; case 'clap': { const c = t.claps.find(x => x[0] === id); return [U().games[7][0], c ? id + ' ' + c[1] : id]; } case 'odd': return [U().games[8][0], id];
+    case 'num': return [U().games[9][0], id]; case 'rhyme': return [U().games[6][0], id]; case 'clap': { const c = t.claps.find(x => x[0] === id); return [U().games[7][0], c ? id + ' ' + c[1] : id]; } case 'odd': return [U().games[8][0], id];
     default: return [kind, id]; } }
 function weakList() { const e = (P && P.errors) || {}, h = (P && P.hits) || {};
   const rows = Object.keys(e).map(k => ({ k, e: e[k], h: h[k] || 0 })).filter(r => r.e > 0).sort((a, b) => (b.e / (b.e + b.h)) - (a.e / (a.e + a.h)) || b.e - a.e).slice(0, 10);
@@ -739,7 +785,7 @@ function weakList() { const e = (P && P.errors) || {}, h = (P && P.hits) || {};
 function practice(key) { const [kind, id] = key.split(/:(.+)/); const t = T(); Voice.stop();
   switch (kind) { case 'vowel': gameVowel(t.vowels.findIndex(v => v[0] === id)); break; case 'letter': gameFirst(id); break; case 'word': gameWord(id); break;
     case 'build': gameBuild(id); break; case 'missing': gameMissing(id); break; case 'trace': traceScreen(id); break; case 'story': storyScreen(+id); break;
-    case 'rhyme': gameRhyme(); break; case 'clap': gameClap(); break; case 'odd': gameOdd(); break; default: home(); } }
+    case 'rhyme': gameRhyme(); break; case 'clap': gameClap(); break; case 'odd': gameOdd(); break; case 'num': gameCount(id); break; default: home(); } }
 
 /* Pantalla de bienvenida: el primer toque desbloquea el audio del teléfono; después la paloma saluda. */
 function showGate(then) { const g = $('#startGate'); if (!g) { then(); return; } g.hidden = false; $('#startName').textContent = P ? P.name : ''; $('#startText').textContent = U().tapStart;
@@ -760,7 +806,7 @@ Diag.log('session', 'inicio ' + APP_VERSION, { lang: settings.lang });
 Clips.load(); Voice.init();
 P = profiles.find(p => p.id === currentId) || null;
 setHeader();
-function openScreen(name) { const map = { vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, parentsScreen, gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, reviewGame };
+function openScreen(name) { const map = { vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen, parentsScreen, gameVowel, gameWord, gameBuild, gameFirst, gameMemory, gameMissing, gameRhyme, gameClap, gameOdd, reviewGame, numbersScreen, gameCount, gameTapNum };
   if (name && name.startsWith('story:')) { const k = +name.slice(6); if (T().stories[k]) { storyScreen(k); return true; } }
   if (map[name]) { map[name](); return true; } return false; }
 let last = null; try { last = sessionStorage.getItem('lya:last'); } catch (e) {}

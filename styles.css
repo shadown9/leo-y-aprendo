@@ -212,6 +212,14 @@ canvas.trace{max-width:min(92vw,520px)}
 .grid.cubes .storycard .lbl{color:#fff!important;font-size:1.3rem!important;text-shadow:0 2px 0 rgba(0,0,0,.2)}
 .bottombar{position:fixed;left:0;right:0;bottom:0;padding:12px max(16px,env(safe-area-inset-right,0px)) max(14px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:linear-gradient(to top,var(--bg) 70%,transparent);display:flex;justify-content:center;z-index:20}
 .bottombar .btn.big{width:100%;max-width:420px;font-size:1.7rem;padding:18px}
+/* números */
+.numbig{font-family:var(--display);font-weight:700;font-size:clamp(5rem,28vw,7.5rem);line-height:1}
+.countrow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:100%}
+.countrow .cnt{border:0;background:var(--bg);border-radius:16px;width:64px;height:64px;font-size:2.2rem;line-height:1;cursor:pointer;position:relative;box-shadow:var(--shadow);transition:transform .15s}
+.countrow .cnt.on{background:var(--good);transform:scale(1.08)}
+.countrow .cnt small{position:absolute;right:4px;bottom:2px;font-size:.9rem;font-weight:800;color:#fff;background:rgba(0,0,0,.25);border-radius:99px;padding:0 6px}
+.countrow.big span{font-size:clamp(2.2rem,10vw,3rem);line-height:1}
+#numgrid.cubes .tile{min-height:72px;font-size:clamp(1.8rem,8vw,2.6rem);border-radius:18px}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
 .confetti i{position:absolute;top:-20px;width:12px;height:12px;border-radius:3px;animation:fall 1.3s linear forwards}
