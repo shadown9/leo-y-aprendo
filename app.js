@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v6';
+const APP_VERSION = 'v7';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -122,10 +122,11 @@ const cheer = () => U().good[Math.floor(Math.random() * U().good.length)];
 
 /* ---------- progress ---------- */
 function stars() { return P ? P.stars : 0; }
-function award(n, key) {
+let pendingStars = 0; // estrellas ganadas en el juego actual que el niño aún no ha "recogido" (globos)
+function award(n, key, defer) {
   if (!P) return;
   if (key) { if (P.done[key]) return; P.done[key] = true; }
-  P.stars += n; saveProfiles(); $('#starCount').textContent = P.stars; Sfx.star(); checkBadges();
+  P.stars += n; saveProfiles(); if (defer) pendingStars += n; else Sfx.star(); $('#starCount').textContent = P.stars - pendingStars; checkBadges();
 }
 /* Estadística de fallos/aciertos por ítem, para que los padres vean dónde falla y repitan solo eso. */
 function miss(key) { if (!P) return; P.errors = P.errors || {}; P.errors[key] = (P.errors[key] || 0) + 1; saveProfiles(); }
@@ -184,7 +185,7 @@ function newProfileScreen() { Diag.crumb('newProfileScreen');
 function selectProfile(id) { P = profiles.find(p => p.id === id) || null; currentId = id; store.set('current', id); setHeader(); home(); }
 
 /* ---------- home ---------- */
-function home() { Diag.crumb('home'); clearTimeout(roundWatch);
+function home() { Diag.crumb('home'); clearTimeout(roundWatch); pendingStars = 0; $$('.balloons').forEach(l => l.remove()); if (P) $('#starCount').textContent = P.stars;
   if (!P) { profileScreen(); return; }
   Voice.stop(); const t = T(), u = U();
   main.innerHTML = `<section class="screen">
@@ -425,21 +426,36 @@ function gamesScreen() { Diag.crumb('gamesScreen');
 }
 let roundWatch = null;
 function armWatchdog(name) { clearTimeout(roundWatch); const started = Date.now(); roundWatch = setTimeout(() => { if (document.contains(main.querySelector('#area'))) Diag.log('stall', name + ': 60 s sin cambio de ronda', { locked: main.querySelector('#area').style.pointerEvents === 'none' }); }, 60000); }
-function roundShell(title, n) {
+function roundShell(title, n) { pendingStars = 0; $$('.balloons').forEach(l => l.remove()); if (P) $('#starCount').textContent = P.stars;
   main.innerHTML = `<section class="screen">${topbar(title)}${guideHtml(title)}<div class="progress"><i id="bar"></i></div><div id="area"></div><div class="feedback" id="fb"></div></section>`; wire();
   return { area: $('#area'), fb: $('#fb'), bar: $('#bar'), n };
 }
 function finish(sh, won, replay) {
   clearTimeout(roundWatch); sh.bar.style.width = '100%'; P.games = (P.games || 0) + 1; saveProfiles(); mark('game:' + settings.lang + ':' + (P.games)); checkBadges();
-  sh.area.innerHTML = `<div class="stage"><div class="pic">🏆</div><div class="starrow" id="starrow"></div><div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(U().done, { n: won }))}</div>
+  sh.area.innerHTML = `<div class="stage"><div class="pic">🏆</div><div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(U().done, { n: won }))}</div>
     <div class="row"><button class="btn big icon" id="again" type="button" aria-label="${esc(U().again)}">🔁</button><button class="btn alt icon" id="hm" type="button" aria-label="${esc(U().home)}">🏠</button></div></div>`;
   sh.fb.textContent = ''; confetti();
-  // Las estrellas aparecen una por una, contándolas en voz alta, para que el niño las VEA.
-  const row = $('#starrow'); const nums = U().numbers; let k = 0;
-  const pop = () => { if (!document.contains(row)) return; if (k < won) { const st = document.createElement('span'); st.textContent = '⭐'; row.appendChild(st); Sfx.tone(600 + k * 60, 0, .2); k++; Voice.seq([{ t: nums[Math.min(k, nums.length) - 1], rate: .9 }], () => setTimeout(pop, 250)); } else Voice.seq([400, fmt(U().done, { n: won })]); };
-  setTimeout(pop, 500); $('#hm').onclick = home; $('#again').onclick = replay;
+  if (won > 0) { Voice.seq([S().catchStars]); balloons(won); } else Voice.seq([fmt(U().done, { n: won })]); $('#hm').onclick = home; $('#again').onclick = replay;
 }
-function correct(sh, b, n, after, parts) { b.classList.add('good'); Sfx.good(); const c = cheer(); sh.fb.textContent = c; if (n) award(n); confetti();
+/* Globos: las estrellas suben flotando; el niño toca cada una y vuela al contador. Las que no toque se recogen solas. */
+function balloons(n) {
+  const layer = document.createElement('div'); layer.className = 'balloons'; document.body.appendChild(layer);
+  const nums = U().numbers; let caught = 0, left = n; const target = $('#starsBtn');
+  const collect = (el) => { if (el._done) return; el._done = true; caught++; left--; Sfx.tone(700 + caught * 70, 0, .18); Sfx.tone(1100 + caught * 70, .08, .2);
+    const r = el.getBoundingClientRect(), tr = target.getBoundingClientRect(); let m = { e: 0, f: 0 }; try { m = new DOMMatrix(getComputedStyle(el).transform); } catch (e) {}
+    el.style.transform = `translate(${m.e}px, ${m.f}px)`; el.classList.add('fly');
+    requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = 'transform .6s cubic-bezier(.4,0,.2,1), opacity .6s'; el.style.transform = `translate(${m.e + tr.left + tr.width / 2 - r.left - r.width / 2}px, ${m.f + tr.top + tr.height / 2 - r.top - r.height / 2}px) scale(.35)`; el.style.opacity = '.2'; }));
+    setTimeout(() => { el.remove(); pendingStars = Math.max(0, pendingStars - 1); $('#starCount').textContent = P.stars - pendingStars; target.classList.add('bump'); setTimeout(() => target.classList.remove('bump'), 300); }, 600);
+    Voice.seq([{ t: nums[Math.min(caught, nums.length) - 1], rate: .95 }]);
+    if (left === 0) setTimeout(() => { layer.remove(); Sfx.star(); Voice.seq([400, fmt(U().done, { n }), 300, cheer()]); checkBadges(); }, 700); };
+  for (let i = 0; i < n; i++) { const el = document.createElement('button'); el.type = 'button'; el.className = 'balloon'; el.textContent = '⭐'; el.setAttribute('aria-label', '⭐');
+    el.style.left = (8 + Math.random() * 76) + '%'; el.style.animationDelay = (i * .45) + 's'; el.style.animationDuration = (10 + Math.random() * 4) + 's'; el.style.setProperty('--sway', (Math.random() * 40 - 20) + 'px');
+    el.onpointerdown = e => { e.preventDefault(); el.style.animationPlayState = 'paused'; collect(el); }; layer.appendChild(el); }
+  // Las que lleguen arriba sin ser tocadas se recogen solas; así nunca se bloquea.
+  layer.querySelectorAll('.balloon').forEach(el => el.addEventListener('animationend', () => collect(el)));
+  setTimeout(() => { if (document.contains(layer)) layer.querySelectorAll('.balloon').forEach((el, i) => setTimeout(() => collect(el), i * 250)); }, 22000);
+}
+function correct(sh, b, n, after, parts) { b.classList.add('good'); Sfx.good(); const c = cheer(); sh.fb.textContent = c; if (n) award(n, null, true); confetti();
   // Avanza cuando la voz TERMINA de felicitar, nunca por reloj (si no, la ronda siguiente corta la frase).
   armWatchdog('correct'); sh.area.style.pointerEvents = 'none'; // un toque extra no debe cancelar la felicitación ni trabar la ronda
   Voice.seq((parts || []).concat([c, 500]), () => { sh.area.style.pointerEvents = ''; if (document.contains(sh.area)) after(); }); }
@@ -483,7 +499,7 @@ function gameBuild(focus) { Diag.crumb('gameBuild');
     $$('.piece', sh.area).forEach(b => b.onclick = () => { const i = +b.dataset.i;
       if (i === placed.length) { b.disabled = true; slots[i].textContent = caseIt(parts[i]); slots[i].classList.add('full'); placed.push(i); Sfx.tap();
         if (placed.length < parts.length) Voice.seq([{ t: parts[i], rate: .7 }]);
-        else { const c = cheer(); sh.fb.textContent = c; Sfx.good(); $$('.slot', sh.area).forEach(x => x.classList.add('good')); if (!bad) { award(2); won += 2; hit('build:' + word); } confetti();
+        else { const c = cheer(); sh.fb.textContent = c; Sfx.good(); $$('.slot', sh.area).forEach(x => x.classList.add('good')); if (!bad) { award(2, null, true); won += 2; hit('build:' + word); } confetti();
           sh.area.style.pointerEvents = 'none';
           Voice.seq([{ t: parts[i], rate: .7 }, 500, { t: word, rate: .7 }, 600, c, 600], () => { sh.area.style.pointerEvents = ''; if (document.contains(sh.area)) { r++; round(); } }); } }
       else { bad = true; miss('build:' + word); wrong(sh, b, null, 2, `.piece[data-i="${placed.length}"]`); } }); }
@@ -509,7 +525,7 @@ function gameMemory() { Diag.crumb('gameMemory');
   $$('[data-i]', sh.area).forEach(b => b.onclick = () => { const i = +b.dataset.i, c = cards[i]; if (lock || open.includes(i) || b.classList.contains('matched')) return;
     b.classList.remove('face'); b.innerHTML = c.kind === 'pic' ? `<span class="pic">${c.v}</span>` : `<span class="lbl">${esc(c.v)}</span>`; Voice.seq([{ t: c.w, rate: .75 }]); open.push(i);
     if (open.length === 2) { lock = true; const [a, bI] = open; const A = $$('[data-i]', sh.area)[a], B = $$('[data-i]', sh.area)[bI];
-      if (cards[a].k === cards[bI].k) { setTimeout(() => { A.classList.add('matched'); B.classList.add('matched'); Sfx.good(); matched++; award(1); won++; open = []; lock = false; sh.bar.style.width = (matched / 4 * 100) + '%'; if (matched === 4) setTimeout(() => { if (document.contains(sh.area)) finish(sh, won, gameMemory); }, 600); }, 400); }
+      if (cards[a].k === cards[bI].k) { setTimeout(() => { A.classList.add('matched'); B.classList.add('matched'); Sfx.good(); matched++; award(1, null, true); won++; open = []; lock = false; sh.bar.style.width = (matched / 4 * 100) + '%'; if (matched === 4) setTimeout(() => { if (document.contains(sh.area)) finish(sh, won, gameMemory); }, 600); }, 400); }
       else setTimeout(() => { [A, B].forEach(x => { x.classList.add('face'); x.innerHTML = '❔'; }); Sfx.bad(); open = []; lock = false; }, 900); } });
 }
 function gameMissing(focus) { Diag.crumb('gameMissing');

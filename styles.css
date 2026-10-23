@@ -151,6 +151,15 @@ select{font:inherit;padding:10px 12px;border-radius:14px;border:3px solid var(--
 .weakrow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg);border-radius:14px;padding:10px 12px}
 .weakrow div{display:flex;flex-direction:column;min-width:0}.weakrow b{font-family:var(--display);font-size:1.1rem}.weakrow small{color:var(--muted);font-size:.8rem}
 .weakrow .btn{padding:8px 14px;font-size:.95rem;min-height:40px;flex:none}
+/* globos de estrellas: suben, se balancean, el niño las toca */
+.balloons{position:fixed;inset:0;z-index:55;pointer-events:none;overflow:hidden}
+.balloon{position:absolute;bottom:-90px;width:84px;height:84px;border:0;background:transparent;font-size:3.4rem;line-height:1;cursor:pointer;pointer-events:auto;padding:0;
+  filter:drop-shadow(0 6px 6px rgba(0,0,0,.25));animation:rise 6s linear forwards;will-change:transform}
+.balloon::after{content:"";position:absolute;left:50%;top:92%;width:2px;height:40px;background:rgba(43,35,64,.3);transform:translateX(-50%)}
+.balloon.fly{animation:none!important;z-index:2}.balloon.fly::after{display:none}
+@keyframes rise{0%{transform:translate(0,0) rotate(-6deg)}25%{transform:translate(var(--sway,14px),-30vh) rotate(6deg)}50%{transform:translate(calc(var(--sway,14px) * -1),-60vh) rotate(-6deg)}75%{transform:translate(var(--sway,14px),-90vh) rotate(6deg)}100%{transform:translate(0,-125vh) rotate(0)}}
+.bump{animation:pop .3s}
+@media (prefers-reduced-motion:reduce){.balloon{animation-duration:12s!important}}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
 .confetti i{position:absolute;top:-20px;width:12px;height:12px;border-radius:3px;animation:fall 1.3s linear forwards}
