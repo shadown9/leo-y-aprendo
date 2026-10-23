@@ -97,14 +97,14 @@ Detalles pedagógicos que no hay que deshacer: en "¿Cuál es distinta?" el soni
 1. **Voces grabadas (español)** — lo más importante; hoy la app usa la voz del teléfono y suena distinto en cada dispositivo. Junior tiene ElevenLabs **Creator** (121.000 créditos/mes, licencia comercial). Voz: Daniela. Pasos:
    ```
    cd ~/leo-y-aprendo && git pull
-   node tools/build_manifest.js                      # voces/manifest.json (es ≈ 2.724 frases / 55k caracteres; ya regenerado en v27)
-   export ELEVEN_API_KEY=sk_...                      # Junior la crea en elevenlabs.io → perfil → API Keys
-   python3 tools/generate_voices.py --list           # copiar el voice_id de "Daniela"
-   python3 tools/generate_voices.py --only es --voice-es <ID>
-   git add voces && git commit -m "voces es" && git push
+   export ELEVEN_API_KEY=sk_...                      # Junior la crea en elevenlabs.io → perfil → API Keys (o guardarla en tools/.eleven_key, ignorado por git)
+   python3 tools/generar_audio.py check              # clave, créditos, voz Daniela, costo (es ≈ 2.724 frases / 55k caracteres)
+   python3 tools/generar_audio.py prueba             # 5 frases para escuchar antes de gastar
+   python3 tools/generar_audio.py voces-es           # todas; se reanuda si se corta
+   python3 tools/generar_audio.py publicar           # verifica, sube APP_VERSION/CACHE_VERSION, commit y push
    ```
-   El script reanuda si se corta (no regenera lo existente). Si una frase suena mal, bórrala de `voces/es/<hash>.mp3` y vuelve a correr. Escuchar en la app: el nombre escrito a mano del niño sigue con voz del teléfono (es normal).
-2. **Inglés**: elegir voz (joven, alegre, americana; probar con "Hi! This is the letter A. A. A. A is for apple. Mmm. M is for moon. One, two, three. Great job!") y generar `--only en --voice-en <ID>` (≈57k caracteres → mes siguiente o créditos extra).
+   `generar_audio.py todo` encadena check + voces-es + sonidos + publicar. Si una frase suena mal, bórrala de `voces/es/<hash>.mp3` y vuelve a correr. La voz va a `speed 0.9` (habla dirigida a niños). Escuchar en la app: el nombre escrito a mano del niño sigue con voz del teléfono (es normal).
+2. **Inglés**: elegir voz (joven, alegre, americana; probar con "Hi! This is the letter A. A. A. A is for apple. Mmm. M is for moon. One, two, three. Great job!") y generar `python3 tools/generar_audio.py voces-en --voz-en "Nombre"` (≈57k caracteres → mes siguiente o créditos extra).
 3. **Sonidos reales de animales**: `python3 tools/generate_sfx.py` (18 sonidos, ~54 s) o grabaciones CC0 (Pixabay/Freesound) guardadas con el nombre `<clave>.mp3` (`dog_bark`, `cat_meow`…) y `--index`.
 4. **Canciones**: `python3 tools/generate_songs.py --only vocales --lang es` como prueba de costo; luego todas. Letras en `tools/songs.json`; `--show` imprime el prompt para generarlas a mano en la app de ElevenLabs si la API de música no está en el plan. El `.json` de letra reparte las líneas uniformemente; afinar tiempos a mano si hace falta.
 5. **Tiendas**: Bubblewrap (Play) y Capacitor (iOS). Requiere cuenta de desarrollador de Junior (25 USD Google, 99 USD/año Apple).

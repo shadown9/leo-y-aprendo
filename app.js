@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v27';
+const APP_VERSION = 'v28';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -1107,7 +1107,7 @@ function gameMult(focus, opts) { Diag.crumb('gameMult'); opts = opts || {};
     const da = Math.min(a, 5), db = Math.min(b, 6), overflow = a > 5 || b > 6;
     sh.area.innerHTML = `<div class="stage"><div class="groups">${Array.from({ length: da }, () => `<span class="grp">${thing.repeat(db)}</span>`).join('')}${overflow ? `<span class="grp" style="opacity:.55;font-size:1.1rem">…+${a*b - da*db}</span>` : ''}</div><div class="word" style="font-size:2.2rem;letter-spacing:4px">${a} × ${b} = <span style="color:var(--a)">?</span></div><button class="btn big icon" id="hear" type="button">🔊</button></div>
       <div class="grid">${optsM.map(v => `<button class="tile" type="button" data-v="${v}">${v}</button>`).join('')}</div>`;
-    bigOpts(sh.area); const hear = () => Voice.seq([fmt(s.multQ, { a, b })]); $('#hear').onclick = hear; askOnce(opts, r, s.mult.split('.')[0] + '. ' + fmt(s.multQ, { a, b }), hear);
+    bigOpts(sh.area); const hear = () => Voice.seq([fmt(a === 1 ? s.multQ1 : s.multQ, { a, b })]); $('#hear').onclick = hear; askOnce(opts, r, s.mult.split('.')[0] + '. ' + fmt(a === 1 ? s.multQ1 : s.multQ, { a, b }), hear);
     $$('[data-v]', sh.area).forEach(btn => btn.onclick = () => { if (+btn.dataset.v === c) { if (tries === 0) hit('mult:' + a + 'x' + b); adapt('mult', tries === 0); correct(sh, btn, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.multAns, { a, b, c }), 300]); if (tries === 0) won++; } else { tries++; miss('mult:' + a + 'x' + b); if (tries === 1) adapt('mult', false); wrong(sh, btn, hear, tries, `[data-v="${c}"]`); } }); }
   $('#guideText').textContent = s.mult; round();
 }

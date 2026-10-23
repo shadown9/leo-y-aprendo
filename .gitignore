@@ -1,0 +1,5 @@
+# Clave de ElevenLabs (nunca se sube)
+tools/.eleven_key
+# Descargas a medias
+*.part
+.DS_Store
