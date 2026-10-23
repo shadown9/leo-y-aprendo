@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v13';
+const APP_VERSION = 'v14';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -254,6 +254,7 @@ function lettersScreen(focus) { Diag.crumb('lettersScreen');
     <div class="stage" id="stage" hidden></div>
     <div class="grid" id="abc">${all.map(l => `<button class="tile ${'AEIOU'.includes(l[0].toUpperCase()) ? 'v' + l[0].toUpperCase() : ''} ${has('letter:' + L + ':' + l[0]) ? 'done' : ''}" type="button" data-l="${l[0]}">${caseIt(l[0])}</button>`).join('')}</div>
   </section>`;
+  bigOpts(main, '#abc', 4);
   function teach(l, b) { const st = $('#stage'); st.hidden = false; const w = l[1], name = l[3], snd = (t.sounds || {})[l[0]] || l[0];
     const hi = esc(caseIt(w)).replace(new RegExp('^' + caseIt(l[0]), 'i'), m => `<b>${m}</b>`);
     st.innerHTML = `<button class="letter big-tap" id="bigL" type="button" ${'AEIOU'.includes(l[0].toUpperCase()) ? `style="color:${vcolor(l[0])}"` : ''}>${l[0].toUpperCase()} ${l[0]}</button><div class="pic" id="pic">${l[2]}</div><div class="word" id="wd">${hi}</div>
@@ -280,7 +281,7 @@ function sylScreen() { Diag.crumb('sylScreen');
   </section>`;
   const snd = x => (t.sounds || {})[x] || x;
   function render() { $$('#cons .chip', main).forEach(b => b.classList.toggle('on', b.dataset.c === c));
-    $('#syl').innerHTML = vs.map((v, k) => `<button class="tile ${cls[k]}" type="button" data-v="${v}" data-s="${u.sylOf(c, v)}">${caseIt(u.sylOf(c, v))}</button>`).join('');
+    $('#syl').innerHTML = vs.map((v, k) => `<button class="tile ${cls[k]}" type="button" data-v="${v}" data-s="${u.sylOf(c, v)}">${caseIt(u.sylOf(c, v))}</button>`).join(''); bigOpts(main, '#syl', 2);
     $$('[data-s]', main).forEach(b => b.onclick = () => { const s = b.dataset.s, v = b.dataset.v; Sfx.tap(); award(1, 'syl:' + L + ':' + s);
       $$('[data-s]', main).forEach(x => x.classList.remove('good')); b.classList.add('good');
       const w = t.wordCats.flatMap(cat => cat[2]).find(x => x[0].startsWith(s)); const st = $('#stage'); st.hidden = false;
@@ -303,7 +304,7 @@ function wordsScreen() { Diag.crumb('wordsScreen');
   </section>`;
   function render() { $$('#cats .chip', main).forEach((b, k) => b.classList.toggle('on', k === cat));
     $('#words').innerHTML = t.wordCats[cat][2].map(w => `<button class="tile ${has('word:' + L + ':' + w[0]) ? 'done' : ''}" type="button" data-w="${esc(w[0])}"><span class="pic">${w[1]}</span><span class="lbl">${esc(caseIt(w[0]))}</span></button>`).join('');
-    $$('[data-w]', main).forEach(b => b.onclick = () => showWord(b.dataset.w, b)); }
+    $$('[data-w]', main).forEach(b => b.onclick = () => showWord(b.dataset.w, b)); bigOpts(main, '#words', 3); }
   function showWord(word, b) { const w = t.wordCats[cat][2].find(x => x[0] === word); const syl = (t.syllabify[word] || word).split('-'); const st = $('#stage'); st.hidden = false;
     st.innerHTML = `<div class="pic">${w[1]}</div><div class="word" id="wd">${syl.map((s, i) => `<span data-i="${i}">${esc(caseIt(s))}</span>`).join('<span style="color:var(--muted)">·</span>')}</div>
       <div class="row"><button class="btn big icon" id="say" type="button" aria-label="${esc(u.listen)}">🔊</button><button class="btn alt icon" id="bysyl" type="button" aria-label="${esc(u.bySyl)}">🧩</button></div>`;
@@ -358,7 +359,7 @@ function storiesScreen() { Diag.crumb('storiesScreen');
   main.innerHTML = `<section class="screen">${topbar(u.storiesT)}${guideHtml(S().stories)}
     <div class="grid wide">${t.stories.map((s, k) => `<button class="tile storycard ${has('story:' + L + ':' + k) ? 'done' : ''}" type="button" data-k="${k}"><span class="pic">${s.cover}</span><span class="lbl">${esc(s.title)}</span></button>`).join('')}</div>
   </section>`;
-  $$('[data-k]', main).forEach(b => b.onclick = () => { Sfx.tap(); storyScreen(+b.dataset.k); });
+  $$('[data-k]', main).forEach(b => b.onclick = () => { Sfx.tap(); storyScreen(+b.dataset.k); }); bigOpts(main, '.grid', 2);
   wire(); guideSay(S().stories);
 }
 function storyScreen(k) { Diag.crumb('story:' + k);
@@ -373,16 +374,16 @@ function storyScreen(k) { Diag.crumb('story:' + k);
     if (pg < n) { const p = s.pages[pg]; const words = p[0].split(' ');
       $('#stage').innerHTML = `<div class="pagepic">${p[1]}</div><div class="sentence" id="sent">${words.map(w => `<button class="w" type="button" data-w="${esc(w.replace(/[.,!?—"¡¿]/g, ''))}">${esc(caseIt(w))}</button>`).join('')}</div><div class="sub">${pg + 1} / ${n}</div>`;
       $$('.w', main).forEach(b => b.onclick = () => { Voice.say(b.dataset.w, { rate: .75 }); });
-      $('#next').textContent = '➡️'; read(); }
+      $('#next').textContent = '➡️'; if (first) { first = false; Voice.seq([s.title, 700], read); } else read(); }
     else quiz(); }
   function read() { if (pg < n) { Voice.stop(); setTimeout(() => readAlong($('#sent'), s.pages[pg][0], () => { if (pg === n - 1) return; setTimeout(() => { $('#next').classList.add('pulse'); }, 600); }), 100); } }
   function quiz() { const q = s.q; const opts = q[1].map((o, i) => [o, i]);
     $('#stage').innerHTML = `<div class="sub">${esc(u.question)}</div><div class="word" style="font-size:1.5rem;letter-spacing:0">${esc(q[0])}</div>
       <div class="grid" style="width:100%">${shuffle(opts).map(o => `<button class="tile" type="button" data-i="${o[1]}"><span class="pic">${o[0][1]}</span><span class="lbl">${esc(o[0][0])}</span></button>`).join('')}</div>`;
-    Voice.seq([q[0], 900, q[0]]); $('#next').textContent = '🏠';
+    bigOpts($('#stage'), '.grid'); Voice.seq([q[0], 900, q[0]]); $('#next').textContent = '🏠';
     $$('[data-i]', main).forEach(b => b.onclick = () => { if (+b.dataset.i === q[2]) { b.classList.add('good'); Sfx.good(); hit('story:' + k); confetti(); $('#fb').textContent = u.theEnd; Voice.say(cheer()); award(3, 'story:' + L + ':' + k); $('#next').onclick = home; } else { b.classList.add('bad'); Sfx.bad(); miss('story:' + k); $('#fb').textContent = u.bad; setTimeout(() => b.classList.remove('bad'), 400); const ok = $$('[data-i]', main).find(x => +x.dataset.i === q[2]); Voice.seq([u.bad, 600, q[0]]); setTimeout(() => ok.classList.add('pulse'), 1500); } }); }
   $('#read').onclick = read; $('#next').onclick = () => { Sfx.tap(); $('#next').classList.remove('pulse'); if (pg < n) { pg++; show(); } else home(); }; $('#prev').onclick = () => { Sfx.tap(); if (pg > 0) { pg--; show(); } };
-  wire(); Voice.seq([s.title, 700], show);
+  let first = true; wire(); show();
 }
 
 /* ---------- 7. trace ---------- */
@@ -469,8 +470,8 @@ function balloons(n) {
 }
 /* Cubos grandes: las opciones de los juegos llenan la pantalla y cada una tiene su color. */
 const CUBE_COLORS = ['var(--a)', 'var(--e)', 'var(--i)', 'var(--o)', 'var(--u)', '#ff8e53'];
-function bigOpts(area) { const g = area.querySelector('.grid'); if (!g) return; const tiles = $$('.tile', g); const n = tiles.length; if (!n) return;
-  g.classList.add('cubes'); const cols = n <= 3 ? 1 : 2; const rows = Math.ceil(n / cols); g.style.setProperty('--cols', cols);
+function bigOpts(area, sel, forceCols) { const g = area.querySelector(sel || '.grid'); if (!g) return; const tiles = $$('.tile', g); const n = tiles.length; if (!n) return;
+  g.classList.add('cubes'); const cols = forceCols || (n <= 3 ? 1 : n <= 8 ? 2 : 3); const rows = Math.ceil(n / cols); g.style.setProperty('--cols', cols);
   const top = g.getBoundingClientRect().top; const avail = Math.max(0, window.innerHeight - top - 70); const h = Math.max(104, Math.min(240, avail / rows - 14)); g.style.setProperty('--h', h + 'px');
   tiles.forEach((t, i) => { const v = (t.className.match(/\bv([AEIOU])\b/) || [])[1]; t.style.setProperty('--cube', v ? 'var(--' + v.toLowerCase() + ')' : CUBE_COLORS[i % CUBE_COLORS.length]); t.style.animationDelay = (i * .07) + 's'; }); }
 function correct(sh, b, n, after, parts) { b.classList.add('good'); Sfx.good(); const c = cheer(); sh.fb.textContent = c; if (n) award(n, null, true); confetti();

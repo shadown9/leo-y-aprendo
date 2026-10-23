@@ -182,6 +182,31 @@ select{font:inherit;padding:10px 12px;border-radius:14px;border:3px solid var(--
 .grid.cubes .tile.vA,.grid.cubes .tile.vE,.grid.cubes .tile.vI,.grid.cubes .tile.vO,.grid.cubes .tile.vU{color:#fff}
 .grid.cubes .tile:active{transform:translateY(6px);box-shadow:none}
 @keyframes cubein{from{opacity:0;transform:scale(.6)}60%{transform:scale(1.06)}to{opacity:1;transform:scale(1)}}
+/* pantallas de lección: todo grande y a pantalla completa */
+.chip{padding:12px 20px;font-size:1.5rem;min-height:56px}
+.chips{gap:10px}
+#lchips .chip,#cons .chip,#cats .chip{min-width:64px}
+.stage .letter{font-size:clamp(5.5rem,30vw,8rem)}
+.stage .pic{font-size:clamp(4.2rem,22vw,6rem)}
+.stage .word{font-size:clamp(2.2rem,11vw,3rem)}
+.big-tap.pulse{box-shadow:0 0 0 8px rgba(255,180,0,.45)!important}
+.btn.icon{font-size:2.2rem;padding:14px 26px;min-height:64px;min-width:88px}
+.btn.big.icon{font-size:2.6rem;padding:16px 34px;min-height:76px}
+.slot{min-width:84px;height:88px;font-size:2.6rem;border-radius:20px}
+.piece{min-width:92px;height:92px;font-size:2.6rem;border-radius:22px}
+.sentence{font-size:clamp(2rem,9vw,2.8rem)}
+.sentence .w{padding:4px 12px;min-height:56px}
+.pagepic{font-size:clamp(4rem,22vw,6rem)}
+.grid.cubes .tile.done::after{color:#fff;font-size:1.1rem}
+#abc.cubes .tile{min-height:var(--h,80px);font-size:clamp(2.2rem,10vw,3rem);border-radius:20px}
+#words.cubes .tile{min-height:var(--h,110px)}
+#words.cubes .tile .pic{font-size:clamp(2.6rem,12vw,3.6rem)}
+canvas.trace{max-width:min(92vw,520px)}
+.drum{width:min(60vw,220px);height:min(60vw,220px);font-size:clamp(4rem,30vw,7rem)}
+.door{padding:22px 10px;font-size:1.35rem;min-height:150px}
+.door .big{font-size:3rem}
+.grid.cubes .storycard .pic{font-size:clamp(3.4rem,18vw,5rem)}
+.grid.cubes .storycard .lbl{color:#fff!important;font-size:1.3rem!important;text-shadow:0 2px 0 rgba(0,0,0,.2)}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
 .confetti i{position:absolute;top:-20px;width:12px;height:12px;border-radius:3px;animation:fall 1.3s linear forwards}
