@@ -9,7 +9,7 @@
 :root[data-theme="dark"]{--bg:#1b1730;--card:#2a2444;--fg:#fdf6ff;--muted:#b8aecc;--line:#3b3360;--shadow:0 6px 0 rgba(0,0,0,.35);color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html,body{height:100%}
+html,body{height:100%;overscroll-behavior-y:contain}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-weight:600;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   padding-top:max(10px,env(safe-area-inset-top,0px));padding-bottom:max(10px,env(safe-area-inset-bottom,0px));
