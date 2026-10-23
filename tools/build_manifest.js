@@ -22,13 +22,15 @@ for (const L of ['es', 'en']) {
   Object.values(t.sounds || {}).forEach(x => { add(x); if (x) add(x.split(',')[0].trim()); });
   // Sílabas
   t.cons.forEach(c => { add(c); ['a', 'e', 'i', 'o', 'u'].forEach(v => add(u.sylOf(c, v))); });
+  const softR = parts => parts.some((p, i) => i > 0 && /^r[^r]/i.test(p));
+  const addSyl = str => { const parts = str.split('-').filter(Boolean); if (parts.length < 2) return; if (softR(parts)) add(parts.join('·')); else parts.forEach(add); };
   // Palabras y categorías, con sus sílabas
-  t.wordCats.forEach(cat => { add(cat[0]); cat[2].forEach(w => { add(w[0]); (t.syllabify[w[0]] || '').split('-').forEach(add); }); });
+  t.wordCats.forEach(cat => { add(cat[0]); cat[2].forEach(w => { add(w[0]); addSyl(t.syllabify[w[0]] || ''); }); });
   // Rompecabezas, vocal perdida, rimas, palmadas
-  t.build.forEach(b => { b.slice(0, -1).forEach(add); add(b.slice(0, -1).join('')); });
+  t.build.forEach(b => { const parts = b.slice(0, -1); parts.forEach(add); add(parts.join('')); if (softR(parts)) add(parts.join('·')); });
   t.missing.forEach(m => add(m[0]));
   t.rhymes.forEach(set2 => set2.forEach(w => { add(w[0]); add(fmt(s.rhymeQ, { w: w[0] })); }));
-  t.claps.forEach(c => { add(c[0]); c[3].split('-').forEach(add); });
+  t.claps.forEach(c => { add(c[0]); addSyl(c[3]); });
   // "¿Cuál empieza diferente?" frases dinámicas
   t.wordCats.flatMap(c => c[2]).forEach(w => add(fmt(s.startsDiff, { w: w[0], L: w[0][0] })));
   // Frases y cuentos: la frase entera y cada palabra

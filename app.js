@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v19';
+const APP_VERSION = 'v20';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -331,7 +331,8 @@ function wordsScreen() { Diag.crumb('wordsScreen');
     award(1, 'word:' + L + ':' + word); b.classList.add('done');
     // Palabra entera → pausa → sílaba por sílaba (resaltando) → palabra entera otra vez.
     const spans = $$('#wd span[data-i]'); const clear = () => spans.forEach(s => s.style.color = '');
-    const bySyl = () => { let i = 0; const step = () => { clear(); if (i < syl.length) { spans[i].style.color = 'var(--a)'; const k = i; i++; Voice.seq([{ t: syl[k], rate: .55 }, 350], step); } else Voice.seq([{ t: word, rate: .8 }]); }; step(); };
+    const bySyl = () => { if (softR(syl)) { spans.forEach(sp => sp.style.color = 'var(--a)'); Voice.seq(sylSpeech(syl).concat([500, { t: word, rate: .8 }]), clear); return; }
+      let i = 0; const step = () => { clear(); if (i < syl.length) { spans[i].style.color = 'var(--a)'; const k = i; i++; Voice.seq([{ t: syl[k], rate: .55 }, 350], step); } else Voice.seq([{ t: word, rate: .8 }]); }; step(); };
     Voice.seq([{ t: word, rate: .75 }, 900], bySyl);
     $('#say').onclick = () => Voice.seq([{ t: word, rate: .75 }]); $('#bysyl').onclick = bySyl; $('#wd').onclick = bySyl;
     st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
@@ -339,6 +340,10 @@ function wordsScreen() { Diag.crumb('wordsScreen');
   wire(); render(); guideSay(S().words);
 }
 
+/* Sílabas en voz alta. Una sílaba interna que empieza con r suave ("ri" de mariposa) suena fuerte si se dice sola,
+   así que esas palabras se dicen como una sola frase con punto medio: "ma·ri·po·sa" (la voz mantiene la r suave). */
+function softR(parts) { return parts.some((p, i) => i > 0 && /^r[^r]/i.test(p)); }
+function sylSpeech(parts, rate) { return softR(parts) ? [{ t: parts.join('·'), rate: rate || .6 }] : parts.flatMap(p => [{ t: p, rate: rate || .55 }, 350]); }
 /* ---------- read-along engine (used by phrases & stories) ---------- */
 function readAlong(container, text, onDone) {
   const words = $$('.w', container); const tokens = text.split(' '); let starts = [], pos = 0;
@@ -552,7 +557,7 @@ function gameBuild(focus, opts) { Diag.crumb('gameBuild'); opts = opts || {};
     sh.area.innerHTML = `<div class="stage"><div class="pic">${pic}</div><button class="btn big icon" id="hear" type="button" aria-label="${esc(u.listen)}">🔊</button>
       <div class="slots">${parts.map(() => `<div class="slot jig"></div>`).join('')}</div>
       <div class="pieces">${order.map(i => `<button class="piece jig" type="button" data-i="${i}">${esc(caseIt(i < 0 ? extras[-1 - i] : parts[i]))}</button>`).join('')}</div></div>`;
-    const hear = () => Voice.seq([{ t: word, rate: .7 }, 600].concat(parts.flatMap(p => [{ t: p, rate: .55 }, 350]), [{ t: word, rate: .8 }])); $('#hear').onclick = hear; askOnce(opts, r, S().gBuild, hear);
+    const hear = () => Voice.seq([{ t: word, rate: .7 }, 600].concat(sylSpeech(parts), [{ t: word, rate: .8 }])); $('#hear').onclick = hear; askOnce(opts, r, S().gBuild, hear);
     const slots = $$('.slot', sh.area);
     $$('.piece', sh.area).forEach(b => b.onclick = () => { const i = +b.dataset.i;
       if (i === placed.length) { b.disabled = true; slots[i].textContent = caseIt(parts[i]); slots[i].classList.add('full'); placed.push(i); Sfx.tap();
@@ -621,7 +626,7 @@ function gameClap(focus, opts) { Diag.crumb('gameClap'); opts = opts || {};
     sh.area.innerHTML = `<div class="stage"><div class="pic">${pic}</div><div class="word">${esc(caseIt(word))}</div><button class="btn big icon" id="hear" type="button">🔊</button>
       <div class="claps" id="claps"></div><button class="drum" id="drum" type="button" aria-label="🥁">🥁</button></div><p class="prompt">${esc(S().clapHow)}</p>`;
     const parts = syl.split('-');
-    const model = () => Voice.seq([{ t: word, rate: .7 }, 500].concat(parts.flatMap(p => [{ t: p, rate: .55 }, 350]))); // dice la palabra y luego sílaba por sílaba
+    const model = () => Voice.seq([{ t: word, rate: .7 }, 500].concat(sylSpeech(parts))); // dice la palabra y luego sílaba por sílaba
     const hear = () => { model(); }; $('#hear').onclick = hear; askOnce(opts, r, S().gClap, hear);
     const drum = $('#drum'), claps = $('#claps');
     const evaluate = () => { locked = true; Voice.stop();
