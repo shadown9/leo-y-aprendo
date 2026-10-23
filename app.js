@@ -83,7 +83,7 @@ const Voice = {
       const t = typeof p === 'string' ? p : p.t, rate = typeof p === 'string' ? undefined : p.rate;
       if (!this.supported()) { setTimeout(step, 600); return; }
       let ended = false; const done = () => { if (ended) return; ended = true; setTimeout(step, 120); };
-      this.say(t, { rate, onend: done }); setTimeout(done, 400 + t.length * 260); };
+      this.say(t, { rate, onend: done }); setTimeout(done, 1200 + t.length * 220); };
     step();
   },
 };
@@ -420,10 +420,13 @@ function finish(sh, won, replay) {
   const pop = () => { if (!document.contains(row)) return; if (k < won) { const st = document.createElement('span'); st.textContent = '⭐'; row.appendChild(st); Sfx.tone(600 + k * 60, 0, .2); k++; Voice.seq([{ t: nums[Math.min(k, nums.length) - 1], rate: .9 }], () => setTimeout(pop, 250)); } else Voice.seq([400, fmt(U().done, { n: won })]); };
   setTimeout(pop, 500); $('#hm').onclick = home; $('#again').onclick = replay;
 }
-function correct(sh, b, n, after) { b.classList.add('good'); Sfx.good(); sh.fb.textContent = cheer(); if (n) award(n); confetti(); setTimeout(() => { if (document.contains(sh.area)) after(); }, 1300); }
+function correct(sh, b, n, after, parts) { b.classList.add('good'); Sfx.good(); const c = cheer(); sh.fb.textContent = c; if (n) award(n); confetti();
+  // Avanza cuando la voz TERMINA de felicitar, nunca por reloj (si no, la ronda siguiente corta la frase).
+  sh.area.style.pointerEvents = 'none'; // un toque extra no debe cancelar la felicitación ni trabar la ronda
+  Voice.seq((parts || []).concat([c, 500]), () => { sh.area.style.pointerEvents = ''; if (document.contains(sh.area)) after(); }); }
 function wrong(sh, b, retry, tries, okSel) { b.classList.add('bad'); Sfx.bad(); sh.fb.textContent = U().bad; setTimeout(() => b.classList.remove('bad'), 400);
   if (tries >= 2 && okSel) { const ok = sh.area.querySelector(okSel); if (ok) { ok.classList.add('pulse'); Voice.seq([U().bad, 500, S().hint]); return; } }
-  if (retry) setTimeout(retry, 500); }
+  if (retry) setTimeout(() => { if (sh.area.style.pointerEvents !== 'none') retry(); }, 500); }
 function gameVowel(focus) {
   const t = T(), u = U(); const sh = roundShell(u.games[0][0], 6); let r = 0, won = 0;
   function round() { if (r === sh.n) { finish(sh, won, gameVowel); return; }
@@ -431,7 +434,7 @@ function gameVowel(focus) {
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.hear)}</p>
       <div class="grid">${t.vowels.map((x, i) => `<button class="tile ${cls[i]}" type="button" data-i="${i}">${caseIt(x[0].toLowerCase())}</button>`).join('')}</div>`;
     const hear = () => Voice.seq([{ t: v[0], rate: .55 }, 700, { t: v[0], rate: .55 }]); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gVowel, 600], hear); else setTimeout(hear, 300);
-    $$('[data-i]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.i === k) { Voice.seq([cheer()]); if (tries === 0) hit('vowel:' + v[0]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; miss('vowel:' + v[0]); wrong(sh, b, hear, tries, `[data-i="${k}"]`); } }); }
+    $$('[data-i]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.i === k) { if (tries === 0) hit('vowel:' + v[0]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: v[0], rate: .6 }, 300]); if (tries === 0) won++; } else { tries++; miss('vowel:' + v[0]); wrong(sh, b, hear, tries, `[data-i="${k}"]`); } }); }
   $('#guideText').textContent = S().gVowel; round();
 }
 function gameWord(focus) {
@@ -442,7 +445,7 @@ function gameWord(focus) {
     sh.area.innerHTML = `<div class="row" style="margin:8px 0"><button class="btn big" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.hear)}</p>
       <div class="grid wide">${opts.map(w => `<button class="tile" type="button" data-w="${esc(w[0])}"><span class="pic">${w[1]}</span></button>`).join('')}</div>`;
     const hear = () => Voice.seq([{ t: ans[0], rate: .7 }]); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gWord, 600], hear); else setTimeout(hear, 300);
-    $$('[data-w]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.w === ans[0]) { b.innerHTML += `<span class="lbl">${esc(caseIt(ans[0]))}</span>`; Voice.seq([ans[0], 400, cheer()]); if (tries === 0) hit('word:' + ans[0]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; miss('word:' + ans[0]); wrong(sh, b, hear, tries, `[data-w="${ans[0].replace(/"/g, '')}"]`); } }); }
+    $$('[data-w]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.w === ans[0]) { b.innerHTML += `<span class="lbl">${esc(caseIt(ans[0]))}</span>`; if (tries === 0) hit('word:' + ans[0]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: ans[0], rate: .7 }, 400]); if (tries === 0) won++; } else { tries++; miss('word:' + ans[0]); wrong(sh, b, hear, tries, `[data-w="${ans[0].replace(/"/g, '')}"]`); } }); }
   $('#guideText').textContent = S().gWord; round();
 }
 function gameBuild(focus) {
@@ -459,8 +462,11 @@ function gameBuild(focus) {
     const hear = () => Voice.seq([{ t: word, rate: .7 }, 600].concat(parts.flatMap(p => [{ t: p, rate: .55 }, 350]), [{ t: word, rate: .8 }])); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gBuild, 600], hear); else setTimeout(hear, 300);
     const slots = $$('.slot', sh.area);
     $$('.piece', sh.area).forEach(b => b.onclick = () => { const i = +b.dataset.i;
-      if (i === placed.length) { b.disabled = true; slots[i].textContent = caseIt(parts[i]); slots[i].classList.add('full'); placed.push(i); Voice.say(parts[i], { rate: .7 }); Sfx.tap();
-        if (placed.length === parts.length) { sh.fb.textContent = cheer(); Sfx.good(); $$('.slot', sh.area).forEach(x => x.classList.add('good')); Voice.seq([400, { t: word, rate: .7 }, 500, cheer()]); if (!bad) { award(2); won += 2; hit('build:' + word); } confetti(); setTimeout(() => { if (document.contains(sh.area)) { r++; round(); } }, 2600); } }
+      if (i === placed.length) { b.disabled = true; slots[i].textContent = caseIt(parts[i]); slots[i].classList.add('full'); placed.push(i); Sfx.tap();
+        if (placed.length < parts.length) Voice.seq([{ t: parts[i], rate: .7 }]);
+        else { const c = cheer(); sh.fb.textContent = c; Sfx.good(); $$('.slot', sh.area).forEach(x => x.classList.add('good')); if (!bad) { award(2); won += 2; hit('build:' + word); } confetti();
+          sh.area.style.pointerEvents = 'none';
+          Voice.seq([{ t: parts[i], rate: .7 }, 500, { t: word, rate: .7 }, 600, c, 600], () => { sh.area.style.pointerEvents = ''; if (document.contains(sh.area)) { r++; round(); } }); } }
       else { bad = true; miss('build:' + word); wrong(sh, b, null, 2, `.piece[data-i="${placed.length}"]`); } }); }
   $('#guideText').textContent = S().gBuild; round();
 }
@@ -472,7 +478,7 @@ function gameFirst(focus) {
     sh.area.innerHTML = `<div class="stage"><div class="pic">${ans[2]}</div><div class="word">${esc(caseIt(ans[1]))}</div><button class="btn" id="hear" type="button">🔊</button></div><p class="prompt">${esc(u.games[3][0])}</p>
       <div class="grid">${opts.map(o => `<button class="tile" type="button" data-l="${o[0]}">${caseIt(o[0])}</button>`).join('')}</div>`;
     const hear = () => Voice.seq([{ t: ans[1], rate: .65 }, 500, { t: ans[1], rate: .55 }]); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gFirst, 600], hear); else setTimeout(hear, 300);
-    $$('[data-l]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.l === ans[0]) { Voice.seq([ans[1], 400, cheer()]); if (tries === 0) hit('letter:' + ans[0]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; miss('letter:' + ans[0]); wrong(sh, b, hear, tries, `[data-l="${ans[0]}"]`); } }); }
+    $$('[data-l]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.l === ans[0]) { if (tries === 0) hit('letter:' + ans[0]); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: ans[1], rate: .7 }, 400]); if (tries === 0) won++; } else { tries++; miss('letter:' + ans[0]); wrong(sh, b, hear, tries, `[data-l="${ans[0]}"]`); } }); }
   $('#guideText').textContent = S().gFirst; round();
 }
 function gameMemory() {
@@ -496,7 +502,7 @@ function gameMissing(focus) {
     sh.area.innerHTML = `<div class="stage"><div class="pic">${pic}</div><div class="word" id="wd">${shown}</div><button class="btn" id="hear" type="button">🔊</button></div>
       <div class="grid">${['a', 'e', 'i', 'o', 'u'].map((v, i) => `<button class="tile ${cls[i]}" type="button" data-v="${v}">${caseIt(v)}</button>`).join('')}</div>`;
     const hear = () => Voice.seq([{ t: word, rate: .6 }, 500, { t: word, rate: .75 }]); $('#hear').onclick = hear; if (r === 0) Voice.seq([S().gMissing, 600], hear); else setTimeout(hear, 300);
-    $$('[data-v]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.v === ans) { $('#gap').textContent = caseIt(ans); $('#gap').style.borderBottom = 'none'; Voice.seq([word, 400, cheer()]); if (tries === 0) hit('missing:' + word); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }); if (tries === 0) won++; } else { tries++; miss('missing:' + word); wrong(sh, b, hear, tries, `[data-v="${ans}"]`); } }); }
+    $$('[data-v]', sh.area).forEach(b => b.onclick = () => { if (b.dataset.v === ans) { $('#gap').textContent = caseIt(ans); $('#gap').style.borderBottom = 'none'; if (tries === 0) hit('missing:' + word); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; round(); }, [{ t: word, rate: .7 }, 400]); if (tries === 0) won++; } else { tries++; miss('missing:' + word); wrong(sh, b, hear, tries, `[data-v="${ans}"]`); } }); }
   $('#guideText').textContent = S().gMissing; round();
 }
 
