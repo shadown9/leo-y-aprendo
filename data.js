@@ -12,6 +12,7 @@ window.LYA_DATA = {
       phrasePrompt: 'Escucha y sigue las palabras. Toca una palabra para oírla.', readAll: 'Leer la frase', storyPrompt: 'Toca ▶ para que te lea la página', question: 'Pregunta', theEnd: '¡Fin! 🎉',
       tracePrompt: 'Sigue la letra con tu dedo', upper: 'Mayúscula', lower: 'minúscula',
       games: [['¿Qué vocal escuchas?','Escucha y toca','👂'],['¿Qué palabra escuchas?','Elige el dibujo','🖼️'],['Arma la palabra','Une las sílabas','🧱'],['¿Con qué letra empieza?','Mira el dibujo','🔎'],['Memoria','Une palabra y dibujo','🃏'],['La vocal perdida','Completa la palabra','❓'],['¿Qué rima?','Escucha los sonidos','🎵'],['Palmadas','Cuenta las sílabas','🥁'],['¿Cuál es distinta?','Sonido del inicio','🕵️']],
+      tapStart: 'Toca para empezar',
       reviewT: 'Juego del día', reviewSub: 'repasa 2 minutos', reviewDone: '¡hecho por hoy!', levelUp: '¡Subes de nivel!', levelsT: 'Nivel por juego', levelsHelp: 'Sube solo con 3 aciertos seguidos y baja con 2 fallos (meta: ~80 % de aciertos).', reviewsN: 'repasos',
       hear: 'Toca el altavoz para escuchar', good: ['¡Muy bien!','¡Excelente!','¡Lo lograste!','¡Genial!','¡Eres increíble!'], bad: 'Casi… inténtalo otra vez',
       done: '¡Terminaste! Ganaste {n} estrellas', stars: 'estrellas', badges: 'Insignias', progress: 'Progreso', profiles: 'Jugadores',
@@ -74,6 +75,7 @@ window.LYA_DATA = {
       phrasePrompt: 'Listen and follow the words. Tap a word to hear it.', readAll: 'Read the sentence', storyPrompt: 'Tap ▶ to hear the page', question: 'Question', theEnd: 'The end! 🎉',
       tracePrompt: 'Trace the letter with your finger', upper: 'Uppercase', lower: 'lowercase',
       games: [['Which vowel do you hear?','Listen and tap','👂'],['Which word do you hear?','Pick the picture','🖼️'],['Build the word','Put the letters in order','🧱'],['What letter does it start with?','Look at the picture','🔎'],['Memory','Match word and picture','🃏'],['The missing vowel','Complete the word','❓'],['What rhymes?','Listen to the sounds','🎵'],['Clap it','Count the syllables','🥁'],['Which is different?','First sound','🕵️']],
+      tapStart: 'Tap to start',
       reviewT: 'Game of the day', reviewSub: '2-minute review', reviewDone: 'done for today!', levelUp: 'Level up!', levelsT: 'Level per game', levelsHelp: 'Goes up after 3 correct in a row and down after 2 misses (target: ~80% accuracy).', reviewsN: 'reviews',
       hear: 'Tap the speaker to listen', good: ['Great job!','Excellent!','You did it!','Awesome!','You are amazing!'], bad: 'Almost… try again',
       done: 'All done! You earned {n} stars', stars: 'stars', badges: 'Badges', progress: 'Progress', profiles: 'Players',
@@ -123,5 +125,5 @@ window.LYA_DATA = {
       { title: 'Tom and the Ball', cover: '⚽', pages: [['Tom has a ball.','👦⚽'],['The ball is blue.','⚽💙'],['Tom plays with his dog.','👦🐶'],['The dog runs and runs.','🐶💨'],['Goal! Everyone laughs.','🥅😄']], q: ['Who does Tom play with?',[['his dog','🐶'],['a cat','🐱'],['a fish','🐟']],0] },
     ],
   },
-  avatars: ['🦉','🦊','🐼','🦄','🐸','🐯','🐰','🐙','🦁','🐧','🐶','🐱'],
+  avatars: ['🕊️','🦊','🐼','🦄','🐸','🐯','🐰','🐙','🦁','🐧','🐶','🐱'],
 };

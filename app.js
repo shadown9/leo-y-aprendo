@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v10';
+const APP_VERSION = 'v11';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -157,7 +157,7 @@ function checkBadges() { if (!P) return; P.badges = P.badges || {}; BADGES.forEa
 /* ---------- UI helpers ---------- */
 function topbar(title) { return `<div class="topbar"><button class="back" type="button" data-home aria-label="${esc(U().back)}">←</button><div class="title">${esc(title)}</div></div>`; }
 function wire() { $$('[data-home]', main).forEach(b => b.onclick = () => { Voice.stop(); home(); }); }
-function setHeader() { $('#langBtn').textContent = '🌎 ' + T().toggle; $('#starCount').textContent = stars(); $('#profileBtn').textContent = P ? P.avatar : '🦉'; document.documentElement.lang = settings.lang; }
+function setHeader() { $('#langBtn').textContent = '🌎 ' + T().toggle; $('#starCount').textContent = stars(); $('#profileBtn').textContent = P ? P.avatar : '🕊️'; document.documentElement.lang = settings.lang; }
 function levelStars(i) {
   if (!P) return 0; const d = P.done, L = settings.lang, pre = ['vowel:', 'letter:', 'syl:', 'word:', 'phrase:', 'story:', 'trace:', 'game:'][i];
   return Object.keys(d).filter(k => k.startsWith(pre) && (pre === 'trace:' || k.includes(':' + L + ':'))).length;
@@ -167,7 +167,7 @@ function levelStars(i) {
 function profileScreen() { Diag.crumb('profileScreen');
   const u = U();
   main.innerHTML = `<section class="screen">
-    <div class="mascot"><span class="owl">🦉</span><p>${esc(u.welcome)}</p></div>
+    <div class="mascot"><span class="owl">🕊️</span><p>${esc(u.welcome)}</p></div>
     <div class="profiles">${profiles.map(p => `<button class="profile" type="button" data-id="${p.id}"><span class="av">${p.avatar}</span>${esc(p.name)}<small>⭐ ${p.stars}</small></button>`).join('')}
       <button class="profile add" type="button" id="addProfile"><span class="av">➕</span>${esc(u.newProfile)}</button></div>
   </section>`;
@@ -192,7 +192,7 @@ function newProfileScreen() { Diag.crumb('newProfileScreen');
 function selectProfile(id) { P = profiles.find(p => p.id === id) || null; currentId = id; store.set('current', id); setHeader(); home(); }
 
 /* ---------- home ---------- */
-function home() { Diag.crumb('home'); clearTimeout(roundWatch); inReview = false; pendingStars = 0; $$('.balloons').forEach(l => l.remove()); if (P) $('#starCount').textContent = P.stars;
+function home() { if (window._pendingReload) { location.reload(); return; } Diag.crumb('home'); clearTimeout(roundWatch); inReview = false; pendingStars = 0; $$('.balloons').forEach(l => l.remove()); if (P) $('#starCount').textContent = P.stars;
   if (!P) { profileScreen(); return; }
   Voice.stop(); const t = T(), u = U();
   main.innerHTML = `<section class="screen">
@@ -202,11 +202,13 @@ function home() { Diag.crumb('home'); clearTimeout(roundWatch); inReview = false
   </section>`;
   $$('[data-go]', main).forEach(b => b.onclick = () => { Sfx.tap(); [vowelsScreen, lettersScreen, sylScreen, wordsScreen, phrasesScreen, storiesScreen, traceScreen, gamesScreen][+b.dataset.go](); });
   $('#reviewBtn').onclick = () => { Sfx.tap(); reviewGame(); };
-  if (!home._welcomed) { home._welcomed = true; guideSay(fmt(u.hello, { name: P.name }) + ' ' + S().home); } else guideSay(S().home);
+  const greeting = fmt(u.hello, { name: P.name }) + ' ' + S().home;
+  if (!Voice.unlocked) { $('#guideText').textContent = greeting; showGate(() => { home._welcomed = true; guideSay(greeting); }); }
+  else if (!home._welcomed) { home._welcomed = true; guideSay(greeting); } else guideSay(S().home);
 }
 
 /* ---------- guide (búho que habla) ---------- */
-function guideHtml(text) { return `<div class="mascot"><span class="owl">🦉</span><p id="guideText">${esc(text)}</p></div>`; }
+function guideHtml(text) { return `<div class="mascot"><span class="owl">🕊️</span><p id="guideText">${esc(text)}</p></div>`; }
 function guideSay(text, then) { const g = $('#guideText'); if (g) g.textContent = text; Voice.seq([text, 400], then); }
 const S = () => U().say;
 
@@ -712,6 +714,9 @@ function practice(key) { const [kind, id] = key.split(/:(.+)/); const t = T(); V
     case 'build': gameBuild(id); break; case 'missing': gameMissing(id); break; case 'trace': traceScreen(id); break; case 'story': storyScreen(+id); break;
     case 'rhyme': gameRhyme(); break; case 'clap': gameClap(); break; case 'odd': gameOdd(); break; default: home(); } }
 
+/* Pantalla de bienvenida: el primer toque desbloquea el audio del teléfono; después la paloma saluda. */
+function showGate(then) { const g = $('#startGate'); if (!g) { then(); return; } g.hidden = false; $('#startName').textContent = P ? P.name : ''; $('#startText').textContent = U().tapStart;
+  g.onclick = () => { g.hidden = true; Sfx.ctx(); Sfx.sparkle(1); setTimeout(then, 250); }; }
 /* ---------- boot ---------- */
 let deferredInstall = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
@@ -729,5 +734,7 @@ Voice.init();
 P = profiles.find(p => p.id === currentId) || null;
 setHeader();
 if (P) home(); else if (profiles.length) profileScreen(); else newProfileScreen();
-if ('serviceWorker' in navigator && location.protocol !== 'file:') { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(e => Diag.log('sw', 'registro falló: ' + e.message))); }
+if ('serviceWorker' in navigator && location.protocol !== 'file:') { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(reg => { try { reg.update(); } catch (e) {} }).catch(e => Diag.log('sw', 'registro falló: ' + e.message)));
+  // Cuando llega una versión nueva, la app se recarga sola una vez (solo en el inicio, nunca a mitad de un juego).
+  let reloaded = false; navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloaded) return; reloaded = true; Diag.log('sw', 'versión nueva activa'); if (current === 'home' || current === 'profileScreen') location.reload(); else window._pendingReload = true; }); }
 })();
