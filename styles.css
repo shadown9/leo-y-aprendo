@@ -160,6 +160,13 @@ select{font:inherit;padding:10px 12px;border-radius:14px;border:3px solid var(--
 @keyframes rise{0%{transform:translate(0,0) rotate(-6deg)}25%{transform:translate(var(--sway,14px),-30vh) rotate(6deg)}50%{transform:translate(calc(var(--sway,14px) * -1),-60vh) rotate(-6deg)}75%{transform:translate(var(--sway,14px),-90vh) rotate(6deg)}100%{transform:translate(0,-125vh) rotate(0)}}
 .bump{animation:pop .3s}
 @media (prefers-reduced-motion:reduce){.balloon{animation-duration:12s!important}}
+/* juego del día, tambor, niveles */
+.door.review{width:100%;background:linear-gradient(160deg,#2b2340,#5b8def);flex-direction:row;justify-content:center;gap:14px;padding:14px 10px}
+.door.review .big{font-size:2.2rem}.door.review.donetoday{background:linear-gradient(160deg,var(--good),#38d9a9)}
+.drum{border:0;background:var(--card);border-radius:50%;width:140px;height:140px;font-size:4.5rem;box-shadow:var(--shadow);cursor:pointer;line-height:1}
+.drum:active{transform:scale(.94)}
+.claps{min-height:2.2rem;font-size:1.6rem;letter-spacing:4px}
+@media (min-width:640px){.door.review{grid-column:1/-1}}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
 .confetti i{position:absolute;top:-20px;width:12px;height:12px;border-radius:3px;animation:fall 1.3s linear forwards}
