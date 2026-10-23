@@ -242,7 +242,9 @@ canvas.trace{max-width:min(92vw,520px)}
 .lyrics .line{font-family:var(--display);font-size:1.3rem;margin:4px 0;padding:6px 10px;border-radius:12px;transition:background .2s}
 .lyrics .line.hl{background:var(--e);color:#2b2340}
 /* dinero, lectura, tablas, grupos */
-.coin{display:inline-flex;flex-direction:column;align-items:center;line-height:1;gap:2px}.coin b{font-family:var(--display);font-size:.8rem;background:var(--e);color:#2b2340;border-radius:99px;padding:2px 7px}.coin.bill b{background:var(--good);color:#fff}
+.coin{display:inline-flex;align-items:center;justify-content:center;line-height:1}.coin svg{display:block;filter:drop-shadow(0 3px 3px rgba(0,0,0,.25))}
+.countrow .cnt.coin{padding:0;display:inline-flex;align-items:center;justify-content:center}
+.plant .pp{transition:opacity .2s,filter .2s;cursor:pointer}.plant.sel .pp{opacity:.3}.plant.sel .pp.on{opacity:1;filter:drop-shadow(0 0 8px var(--e))}
 .reading{font-family:var(--body);font-weight:600;font-size:1.25rem;line-height:1.7;text-align:left;max-width:100%}
 .reading .w{border:0;background:transparent;font:inherit;padding:0 2px;border-radius:6px;cursor:pointer}.reading .w.hl{background:var(--e);color:#2b2340}
 .tablerows{display:flex;flex-direction:column;gap:6px;width:100%}

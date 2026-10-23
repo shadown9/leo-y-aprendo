@@ -61,7 +61,7 @@ README.md           instrucciones para humanos (publicar, instalar, voces)
 6. **Recompensa física**: globos de estrellas que el niño toca, sonido de varita. No "pop".
 7. **Gate** obligatorio al abrir (desbloquea audio). Saludo por el nombre del niño.
 8. **Rompecabezas**: piezas mezcladas de verdad + pieza extra que no va (un niño descubrió el patrón "derecha-izquierda" y resolvía sin leer).
-9. **Audio**: voz femenina, joven, alegre, **latinoamericana** (los estudios: niños pequeños atienden más a voces agudas con "habla dirigida a niños"). Voz elegida en ElevenLabs: **Daniela** (probada por Junior: "se oye genial y fuerte"). Inglés: pendiente.
+9. **Audio**: voz femenina, joven, alegre, **latinoamericana** (los estudios: niños pequeños atienden más a voces agudas con "habla dirigida a niños"). Voz elegida en ElevenLabs: **"Daniela - Energetic Saleswoman"** (ID wBnAJRbu3cj93gnAm02O; probada por Junior: "se oye genial y fuerte"; comparada en 2026-10-23 con "Daniela - Tender, Young, Joyful" y el Jefe se quedó con la Energetic). Inglés: pendiente.
 10. **Diagnóstico interno**, nunca en pantalla del niño.
 11. **No interrumpir a quien ya usa la app**: cada publicación es compatible con los datos guardados; la app se actualiza sola solo en el inicio; los audios que falten caen a la voz del teléfono.
 12. Perfil: 28 animales grandes, nombre opcional (si no escribe, se llama como su animal), botón Empezar fijo abajo y pulsando.
@@ -78,14 +78,14 @@ README.md           instrucciones para humanos (publicar, instalar, voces)
 | 5 | Cuentos | 5 cortos (1 pregunta) + 4 largos (9 páginas, 3 preguntas) | — |
 | 6 | Trazar | canvas; mayúscula → minúscula → siguiente letra automático; al final los números 0-9 (sin minúscula) | — |
 | 7 | Juegos | menú de los 28 juegos | — |
-| 8 | Números | contar tocando 1-20 | ¿Cuántos hay? · Toca el número |
+| 8 | Números | contar tocando 1-20; con 1 dice "¡Hay una manzana!" (countThings[2] = singular con artículo); `ui.numWord(n)` da el número en palabras hasta 99 (dinero) | ¿Cuántos hay? · Toca el número |
 | 9 | Colores y formas | 10 colores, 8 formas SVG | ¿De qué color? · Busca la forma |
 | 10 | Sumas y restas | con dibujos (tachados en resta), hasta 5/10/20 | Sumar · Restar |
 | 11 | Emociones | 8 emociones + respiración guiada | ¿Cómo se siente? |
 | 12 | Hora y calendario | reloj SVG (en punto / y media), días, meses | ¿Qué hora es? · ¿Qué día sigue? |
-| 13 | Ciencia | 23 animales (sonido real si existe), hábitat, comida; planta; planetas | ¿Qué animal suena? (tortuga y mariposa nunca son respuesta: son callados) · ¿Dónde vive? |
-| 14 | Canciones | reproductor con letra resaltada (audios pendientes) | — |
-| 15 | Dinero (USD) | 1¢ 5¢ 10¢ 25¢ $1 $5 | ¿Cuánto dinero hay? |
+| 13 | Ciencia | 23 animales (sonido real si existe), hábitat, comida; planta dibujada en SVG con la parte que se ilumina al tocarla; planetas en SVG con tamaño y color reales, ficha con su orden desde el Sol | ¿Qué animal suena? (tortuga y mariposa nunca son respuesta: son callados) · ¿Dónde vive? |
+| 14 | Canciones | letras en canciones/<id>.<lang>.json; si no hay mp3 (o la letra no trae tiempos `t`) la voz canta línea a línea con resaltado; tocar una línea la repite | — |
+| 15 | Dinero (USD) | monedas y billetes dibujados (coinSvg: centavo cobrizo, 10¢ la más pequeña, 25¢ la más grande); al tocar uno se cuenta su valor con monedas menores (COIN_EQUIV: 5¢ = 5×1¢, 25¢ = 5×5¢, $1 = 4×25¢…) | ¿Cuánto dinero hay? |
 | 16 | Escribir | tocar letras en orden con distractores | Escribe la palabra |
 | 17 | Mi cuerpo y el clima | 10 partes, 6 climas con ropa | ¿Qué parte es? · ¿Qué me pongo? |
 | 18 | Leer y entender (8+) | 5 textos, 4 preguntas | Preguntas del texto |

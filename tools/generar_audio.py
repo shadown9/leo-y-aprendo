@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOOLS = os.path.join(ROOT, 'tools'); PY = sys.executable
 ap = argparse.ArgumentParser(description='Audio de Leo y Aprendo con ElevenLabs')
 ap.add_argument('paso', choices=['check', 'prueba', 'voces-es', 'voces-en', 'sonidos', 'canciones', 'publicar', 'todo'])
-ap.add_argument('--voz-es', default='Daniela - Tender', help='voz de Mis Voces (nombre o ID); por defecto "Daniela - Tender, Young, Joyful", la de personajes infantiles'); ap.add_argument('--voz-en', default=None)
+ap.add_argument('--voz-es', default='Daniela - Energetic', help='voz de Mis Voces (nombre o ID); por defecto "Daniela - Energetic Saleswoman", la elegida por el Jefe'); ap.add_argument('--voz-en', default=None)
 ap.add_argument('--si', action='store_true', help='no preguntar antes de gastar créditos')
 args = ap.parse_args()
 

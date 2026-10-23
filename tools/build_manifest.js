@@ -59,8 +59,11 @@ for (const L of ['es', 'en']) {
   (t.plant || []).forEach(pp => add(fmt(s.partIs, { p: pp[0], d: pp[2] }))); if (s.plantGrow) add(s.plantGrow);
   (t.planets || []).forEach(pl => add(fmt(s.planetIs, { p: pl[0], d: pl[2] }))); add(u.noSongs);
   // Dinero, escribir, cuerpo/clima, lectura, multiplicar/fracciones
-  if (t.coins) { const N = n => u.numbers[n - 1] || String(n); const cents = n => fmt(s.cents, { n: N(n) }); const money = c => c < 100 ? cents(c) : (Math.floor(c / 100) === 1 ? s.dollar1 : fmt(s.dollars, { n: N(Math.floor(c / 100)) })) + (c % 100 ? (L === 'es' ? ' con ' : ' and ') + cents(c % 100) : '');
+  if (t.coins) { const N = n => u.numWord(n); const cents = n => n === 1 ? s.cent1 : fmt(s.cents, { n: N(n) }); const money = c => c < 100 ? cents(c) : (Math.floor(c / 100) === 1 ? s.dollar1 : fmt(s.dollars, { n: N(Math.floor(c / 100)) })) + (c % 100 ? (L === 'es' ? ' con ' : ' and ') + cents(c % 100) : '');
     t.coins.forEach(c => { add(c[0]); add(fmt(s.coinIs, { c: c[0], v: money(c[1]) })); }); const totals = new Set(); const vals = t.coins.map(c => c[1]); vals.forEach(a => vals.forEach(b => { totals.add(a + b); vals.forEach(c => { totals.add(a + b + c); vals.forEach(d => totals.add(a + b + c + d)); }); })); [...totals].filter(x => x <= 2000).forEach(x => add(fmt(s.totalIs, { v: money(x) })));
+    [1, 2, 3, 4, 5, 10, 15, 20, 25, 50, 75, 100, 200, 300, 400, 500].forEach(x => add(money(x))); // contar monedas de una en una, de 5 en 5, de 25 en 25
+    (t.countThings || []).forEach(th => { if (th[2]) add(fmt(s.allCounted1, { one: th[2] })); });
+    try { const songs = require(path.join(__dirname, 'songs.json')); Object.values(songs).forEach(sg => (sg[L] && sg[L].lyrics || []).forEach(add)); } catch (e) {} // letras: la voz las canta mientras no haya mp3
     t.writeWords.forEach(w => { add(w[0]); add(fmt(s.wroteIt, { w: w[0] })); addSyl(t.syllabify[w[0]] || ''); }); 'abcdefghijklmnñopqrstuvwxyz'.split('').forEach(l => add(fmt(s.nextLetter, { l })));
     t.bodyParts.forEach(bp => { add(bp[0]); add(fmt(s.bodyPart, { p: bp[0], d: bp[2] })); add(fmt(s.tapPart, { p: bp[0] })); });
     t.weatherKinds.forEach(w => { add(w[0]); add(fmt(s.weatherIs, { w: w[0], d: w[2] })); add(fmt(s.gWeather, { w: w[0] })); add(fmt(s.wearIt, { w: w[0], c: w[3] })); }); t.wearOptions.forEach(o => add(o[0]));
