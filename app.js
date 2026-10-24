@@ -31,7 +31,9 @@ const Diag = {
 window.addEventListener('error', e => Diag.log('js-error', (e.message || 'error') + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno));
 window.addEventListener('unhandledrejection', e => Diag.log('promise', (e.reason && (e.reason.message || e.reason)) || 'rejection'));
 window.LYA = { diag: () => console.log(Diag.report()), diagClear: () => Diag.clear(), version: APP_VERSION };
-let settings = Object.assign({ lang: 'es', rate: 0.8, upper: false, sfx: true, voice: {} }, store.get('settings', {}));
+let settings = Object.assign({ lang: 'es', rate: 0.8, upper: false, sfx: true, voice: {}, pause: 0.5 }, store.get('settings', {}));
+/* Las pausas fijas de las secuencias se pensaron para la voz lenta del teléfono; con voz grabada se acortan (ajustable en la zona de padres). */
+const pauseScale = () => (Clips.index[T().code] && Clips.index[T().code].size) ? (settings.pause || 0.5) : 1;
 let profiles = store.get('profiles', []);
 let currentId = store.get('current', null);
 let P = null; // current profile
@@ -63,15 +65,20 @@ const Clips = {
   playList(list, opts) { let k = 0; const next = () => { if (k >= list.length) { if (opts.onend) opts.onend(); return; } this.play(list[k++], { rate: opts.rate, onend: () => setTimeout(next, 120), onerror: opts.onerror }); }; next(); },
   missing: {}, // frases que cayeron a la voz del teléfono (diagnóstico para completar el manifest)
   current: null,
-  play(src, opts) { this.stop(); const a = this.cache[src] || (this.cache[src] = new Audio(src)); this.current = a; a.playbackRate = opts.rate && opts.rate < .7 ? .82 : 1; try { a.preservesPitch = true; } catch (e) {}
+  // Un reproductor nuevo por frase y se suelta al terminar: guardar uno por cada frase sonada acababa en "error creating media player" (el navegador limita los reproductores vivos). La caché de red la lleva el service worker.
+  play(src, opts) { this.stop(); const a = new Audio(src); this.current = a; a.playbackRate = opts.rate && opts.rate < .7 ? .82 : 1; try { a.preservesPitch = true; } catch (e) {}
     // Cada reproducción lleva su ficha: si otra la interrumpe (stop o el mismo clip otra vez), sus avisos tardíos ("interrupted by pause") se ignoran y no disparan la voz del teléfono.
     const tk = {}; a._tk = tk; const live = () => a._tk === tk;
-    let ended = false; const end = () => { if (ended || !live()) return; ended = true; if (this.current === a) this.current = null; if (opts.onend) opts.onend(); };
+    const release = () => { try { a.onended = a.onerror = null; a.removeAttribute('src'); a.load(); } catch (e) {} };
+    let ended = false; const end = () => { if (ended || !live()) return; ended = true; if (this.current === a) this.current = null; release(); if (opts.onend) opts.onend(); };
     // Si el mp3 no se puede reproducir (sin internet y aún no guardado), se avisa para que hable la voz del teléfono en vez de quedarse mudo.
-    const fail = why => { if (!live()) return; Diag.log('clips', why + ' ' + src); if (opts.onerror && !ended) { ended = true; if (this.current === a) this.current = null; delete this.cache[src]; opts.onerror(); } else end(); };
+    // Fallos de carga esporádicos (vistos en clips muy cortos bajo mucha carga): un reintento con reproductor nuevo antes de caer a la voz del teléfono.
+    const fail = why => { if (!live()) return;
+      if (!opts._retry && !ended) { opts._retry = 1; a._tk = null; if (this.current === a) this.current = null; release(); setTimeout(() => { if (!this.current) this.play(src, opts); }, 60); return; }
+      Diag.log('clips', why + ' ' + src); if (opts.onerror && !ended) { ended = true; if (this.current === a) this.current = null; release(); opts.onerror(); } else end(); };
     a.onended = end; a.onerror = () => fail('error al reproducir'); a.currentTime = 0;
     const pr = a.play(); if (pr && pr.catch) pr.catch(e => fail('play() rechazado: ' + e.message)); },
-  stop() { if (this.current) { try { this.current._tk = null; this.current.onended = null; this.current.pause(); } catch (e) {} this.current = null; } },
+  stop() { if (this.current) { const a = this.current; try { a._tk = null; a.onended = a.onerror = null; a.pause(); a.removeAttribute('src'); a.load(); } catch (e) {} this.current = null; } },
 };
 const Voice = {
   voices: [], unlocked: false, warned: false,
@@ -133,10 +140,10 @@ const Voice = {
     const id = ++this._seq; let i = 0;
     const step = () => { if (id !== this._seq) return; if (i >= parts.length) { if (onDone) onDone(); return; }
       const p = parts[i++];
-      if (typeof p === 'number') { setTimeout(step, p); return; }
+      if (typeof p === 'number') { setTimeout(step, Math.round(p * pauseScale())); return; }
       const t = typeof p === 'string' ? p : p.t, rate = typeof p === 'string' ? undefined : p.rate;
       if (!this.supported()) { setTimeout(step, 600); return; }
-      let ended = false, byTimer = true; const done = () => { if (ended) return; ended = true; byTimer = false; setTimeout(step, 120); };
+      let ended = false, byTimer = true; const done = () => { if (ended) return; ended = true; byTimer = false; setTimeout(step, Math.round(60 + 60 * pauseScale())); };
       this.say(t, { rate, onend: done }); setTimeout(() => { if (!ended) { if (id === this._seq) Diag.log('speech-timeout', 'la voz no avisó que terminó', { text: t.slice(0, 40) }); done(); } }, 1200 + t.length * 220); };
     step();
   },
@@ -1229,6 +1236,7 @@ function parentsPanel() { Diag.crumb('parentsPanel');
     <div class="card"><h3>${esc(u.settings)}</h3>
       <div class="setting"><label for="voiceSel">${esc(u.voice)} (${T().name})</label><select id="voiceSel"><option value="">Auto</option>${vs.map(v => `<option value="${esc(v.voiceURI)}" ${settings.voice[L] === v.voiceURI ? 'selected' : ''}>${esc(v.name)} (${esc(v.lang)})</option>`).join('')}</select>${vs.length ? '' : `<small style="color:var(--bad)">${esc(u.noVoice)}</small>`}</div>
       <div class="setting"><label for="rate">${esc(u.speed)}: <span id="rateV">${settings.rate}</span></label><input type="range" id="rate" min="0.5" max="1.2" step="0.05" value="${settings.rate}"></div>
+      <div class="setting"><label>${esc(u.pace)}</label><div class="row">${[[0.3, u.paceFast], [0.5, u.paceNormal], [0.9, u.paceSlow]].map(([v, lbl]) => `<button class="chip ${(settings.pause || 0.5) === v ? 'on' : ''}" type="button" data-pace="${v}">${esc(lbl)}</button>`).join('')}</div></div>
       <div class="setting"><label>${esc(u.letterCase)}</label><div class="row"><button class="chip ${settings.upper ? 'on' : ''}" id="cU" type="button">ABC</button><button class="chip ${settings.upper ? '' : 'on'}" id="cL" type="button">abc</button></div></div>
       <div class="setting"><label>${esc(u.sfx)}</label><div class="row"><button class="chip ${settings.sfx ? 'on' : ''}" id="sfxOn" type="button">🔔 On</button><button class="chip ${settings.sfx ? '' : 'on'}" id="sfxOff" type="button">🔕 Off</button></div></div>
       <div class="row"><button class="btn alt" id="testVoice" type="button">🔊 ${esc(u.listen)}</button><button class="btn alt" id="dlVoices" type="button">⬇️ ${esc(u.downloadVoices)}</button><button class="btn alt" id="install" type="button" hidden>📲 ${esc(u.install)}</button></div><small id="dlInfo" style="color:var(--muted)"></small></div>
@@ -1247,6 +1255,7 @@ function parentsPanel() { Diag.crumb('parentsPanel');
   $('#rate').oninput = e => { settings.rate = +e.target.value; $('#rateV').textContent = settings.rate; saveSettings(); };
   $('#rate').onchange = () => Voice.say(t.phrases[0][0]);
   $('#cU').onclick = () => { settings.upper = true; saveSettings(); parentsPanel(); }; $('#cL').onclick = () => { settings.upper = false; saveSettings(); parentsPanel(); };
+  $$('[data-pace]', main).forEach(b => b.onclick = () => { settings.pause = +b.dataset.pace; saveSettings(); parentsPanel(); Voice.seq([t.vowels[0][0], 700, t.vowels[0][1]]); });
   $('#sfxOn').onclick = () => { settings.sfx = true; saveSettings(); Sfx.good(); parentsPanel(); }; $('#sfxOff').onclick = () => { settings.sfx = false; saveSettings(); parentsPanel(); };
   $('#testVoice').onclick = () => Voice.say(t.phrases[1][0]);
   $('#dlVoices').onclick = async () => { const b = $('#dlVoices'), info = $('#dlInfo'); b.disabled = true; const n = await Clips.downloadAll(L, (i, tot) => { info.textContent = i + ' / ' + tot; }); info.textContent = n ? '✓ ' + n : u.noVoiceFiles; b.disabled = false; };
