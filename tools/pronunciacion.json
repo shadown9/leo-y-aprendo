@@ -1,0 +1,11 @@
+{
+ "es": {
+  "A, B, C, D, E, F, G": "a, be, ce, de, e, efe, ge",
+  "H, I, J, K, L, M, N": "hache, i, jota, ka, ele, eme, ene",
+  "Ñ, O, P, Q, R, S, T": "eñe, o, pe, cu, erre, ese, te",
+  "U, V, W, X, Y, Z": "u, uve, doble u, equis, ye, zeta",
+  "¡Ya me lo sé, de la A a la Z!": "¡Ya me lo sé, de la a a la zeta!",
+  "Hay lluvia. ¿Qué te pones? Toca la ropa.": "Llueve. ¿Qué te pones? Toca la ropa."
+ },
+ "en": {}
+}

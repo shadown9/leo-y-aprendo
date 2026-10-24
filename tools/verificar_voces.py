@@ -28,9 +28,13 @@ def numword(n):
     d, u = divmod(n, 10)
     if args.lang == 'es': return (['veinti' + ES_U[u]] if d == 2 else [['','','','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'][d] + (' y ' + ES_U[u] if u else '')])[0]
     return ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'][d] + (' ' + EN_U[u] if u else '')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import voz_comun as VC
 def ok(expected, heard):
-    expected = re.sub(r'\b(\d{1,2})\b', lambda mm: numword(int(mm.group(1))), expected)  # la transcripción da "siete", no "7"
-    e, h = norm(expected), norm(heard)
+    if VC.score(args.lang, expected, heard) >= 0.8: return True  # misma regla que reparar_voces.py (números y "$10,05" en palabras, pronunciacion.json)
+    towords = lambda s: re.sub(r'\b(\d{1,2})\b', lambda mm: numword(int(mm.group(1))), s)  # "7" ↔ "siete" en ambos lados
+    heard = re.sub(r'\$(\d+)[,.](\d{2})', lambda mm: f'{mm.group(1)} dólares con {int(mm.group(2))} centavos' if args.lang == 'es' else f'{mm.group(1)} dollars and {int(mm.group(2))} cents', heard)
+    heard = re.sub(r'\$(\d+)', lambda mm: f'{mm.group(1)} dólares' if args.lang == 'es' else f'{mm.group(1)} dollars', heard)
+    e, h = norm(towords(expected)), norm(towords(heard))
     if not h: return False
     if e == h or difflib.SequenceMatcher(None, e, h).ratio() >= 0.8: return True
     # letras sueltas: la transcripción suele dar el nombre ("eme") o "eh"/"ah"
