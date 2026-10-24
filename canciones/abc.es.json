@@ -1,47 +1,47 @@
 {
  "lines": [
   {
-   "t": 0.64,
+   "t": 1.6,
    "text": "A, B, C, D, E, F, G"
   },
   {
-   "t": 5.19,
+   "t": 7.8,
    "text": "H, I, J, K, L, M, N"
   },
   {
-   "t": 9.74,
+   "t": 14.74,
    "text": "Ñ, O, P, Q, R, S, T"
   },
   {
-   "t": 15.9,
+   "t": 21.25,
    "text": "U, V, W, X, Y, Z"
   },
   {
-   "t": 22.06,
+   "t": 27.41,
    "text": "¡El abecedario es muy fácil de aprender!"
   },
   {
-   "t": 26.28,
+   "t": 31.86,
    "text": "¡Canta conmigo otra vez!"
   },
   {
-   "t": 28.52,
+   "t": 34.97,
    "text": "A, B, C, D, E, F, G"
   },
   {
-   "t": 33.26,
+   "t": 41.17,
    "text": "H, I, J, K, L, M, N"
   },
   {
-   "t": 38.0,
+   "t": 48.11,
    "text": "Ñ, O, P, Q, R, S, T"
   },
   {
-   "t": 41.8,
+   "t": 54.62,
    "text": "U, V, W, X, Y, Z"
   },
   {
-   "t": 45.6,
+   "t": 60.78,
    "text": "¡Ya me lo sé, de la A a la Z!"
   }
  ]
