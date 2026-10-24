@@ -16,7 +16,8 @@ CARRIER = VC.CARRIER[args.lang]
 def api(path, body=None, accept='application/json', raw=None, ctype='application/json', timeout=90):
     req = urllib.request.Request('https://api.elevenlabs.io/v1' + path, data=raw if raw is not None else (json.dumps(body).encode() if body is not None else None), headers={'xi-api-key': key, 'Content-Type': ctype, 'Accept': accept})
     with urllib.request.urlopen(req, timeout=timeout) as r: return r.read()
-vs = json.loads(api('/voices'))['voices']; q = args.voice.lower(); voice = ([v for v in vs if v['name'].lower() == q] or [v for v in vs if q in v['name'].lower()])[0]['voice_id']
+if re.fullmatch(r'[A-Za-z0-9]{15,}', args.voice): voice = args.voice  # ya es un voice_id
+else: vs = json.loads(api('/voices'))['voices']; q = args.voice.lower(); voice = ([v for v in vs if v['name'].lower() == q] or [v for v in vs if q in v['name'].lower()])[0]['voice_id']
 spoken = lambda t: VC.spoken(args.lang, t); needs_carrier = VC.needs_carrier
 def gen(text, dest, stability):
     body = {'text': spoken(text), 'model_id': 'eleven_turbo_v2_5', 'language_code': args.lang, 'voice_settings': {'stability': stability, 'similarity_boost': 0.8, 'style': 0.35 if stability < 0.7 else 0.15, 'use_speaker_boost': True, 'speed': 0.9}}

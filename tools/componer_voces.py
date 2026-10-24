@@ -22,6 +22,7 @@ voice = None
 def voice_id():
     global voice
     if voice: return voice
+    if re.fullmatch(r'[A-Za-z0-9]{15,}', args.voice): voice = args.voice; return voice  # ya es un voice_id
     vs = json.loads(api('/voices'))['voices']; q = args.voice.lower(); voice = ([v for v in vs if v['name'].lower() == q] or [v for v in vs if q in v['name'].lower()])[0]['voice_id']; return voice
 TMP = os.path.join(ROOT, 'voces', '_partes_' + args.lang); os.makedirs(TMP, exist_ok=True)
 def part_file(p):
