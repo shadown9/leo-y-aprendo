@@ -40,7 +40,8 @@ for (const L of ['es', 'en']) {
   t.stories.forEach(st => { add(st.title); st.pages.forEach(pg => { add(pg[0]); pg[0].split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); }); (st.qs || [st.q]).forEach(q => { add(q[0]); q[1].forEach(o => add(o[0])); }); });
   add(u.theEnd);
   // Emociones
-  (t.emotions || []).forEach(e => { add(e[0]); add(e[2]); add(fmt(s.emoIs, { e: e[0] })); add(fmt(s.emoAsk, { e: e[0] })); add(fmt(s.feelIs, { e: e[0] })); });
+  (t.emotions || []).forEach(e => { add(e[0]); add(e[2]); add(fmt(s.emoIs, { e: e[0] })); add(fmt(s.emoAsk, { e: e[0] })); add(fmt(s.feelIs, { e: e[0] })); if (s.copeQ) add(fmt(s.copeQ, { e: e[0] })); (e[3] || []).forEach(o => add(o[0])); });
+  Object.values(t.phon || {}).forEach(add); // inglés: sonido fonético de cada letra (kuh, tuh…) para juntar sonidos
   (t.feelings || []).forEach(f => add(f[0])); if (s.breathe) { add(s.breathe); add(s.gFeel.split('.').slice(1).join('.')); }
   // Números: palabras, dígitos, "este es el", "hay N cosas"
   u.numbers.forEach((w, i) => { add(w); add(String(i + 1)); add(fmt(s.numberIs, { n: w })); (t.countThings || []).forEach(th => add(fmt(s.allCounted, { n: w, things: th[0] }))); });

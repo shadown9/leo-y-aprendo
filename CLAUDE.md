@@ -72,16 +72,16 @@ README.md           instrucciones para humanos (publicar, instalar, voces)
 |---|---|---|---|
 | 0 | Vocales | lección guiada A-E-I-O-U (letra, palabra, "toca la A", auto-avanza) | ¿Qué vocal escuchas? · La vocal perdida |
 | 1 | Letras | abecedario en cubos; nombre, sonido, palabra | ¿Con qué letra empieza? |
-| 2 | Sílabas | consonante + vocal, blending "m… a… ma", palabra ejemplo | Arma la palabra (rompecabezas) · ¿Qué sílaba escuchas? (nivel 1-2: misma consonante, cambia la vocal; nivel 3: misma vocal, cambia la consonante) |
+| 2 | Sílabas | ES: consonante + vocal, blending "m… a… ma", palabra ejemplo. EN (`blendScreen`): no hay sílabas; se juntan SONIDOS en palabras cortas de `build` (c-a-t → cat) con el sonido fonético de cada letra (`t.phon`: kuh, tuh…, nunca el nombre); `soundOf()` se usa también en Arma la palabra y Escribir | Arma la palabra (rompecabezas) · ¿Qué sílaba escuchas? (nivel 1-2: misma consonante, cambia la vocal; nivel 3: misma vocal, cambia la consonante) |
 | 3 | Palabras | 60 por idioma en 5 categorías, por sílabas | ¿Qué palabra escuchas? · Memoria · ¿Qué rima? · Palmadas · ¿Cuál es distinta? |
-| 4 | Frases | 22 frases, lectura guiada palabra a palabra | — |
+| 4 | Frases | 22 frases, lectura guiada palabra a palabra; al terminar de leer se esconde el dibujo y pregunta "¿Qué dibujo va con la frase?" con 3 opciones (comprensión; cuenta aciertos/fallos en `phrase:`) | — |
 | 5 | Cuentos | 5 cortos (1 pregunta) + 4 largos (9 páginas, 3 preguntas) | — |
 | 6 | Trazar | canvas con paleta de 8 colores; el pincel se recorta a la máscara de la letra (NO pinta fuera, como libro de colorear); al levantar el dedo la app comprueba sola (sin botón ✅): celebra y pasa mayúscula → minúscula → siguiente; si falta, anima con voz. Números 0-9 al final | — |
 | 7 | Juegos | menú de los 28 juegos | — |
 | 8 | Números | contar tocando 1-20; con 1 dice "¡Hay una manzana!" (countThings[2] = singular con artículo); `ui.numWord(n)` da el número en palabras hasta 99 (dinero) | ¿Cuántos hay? · Toca el número |
 | 9 | Colores y formas | 10 colores, 8 formas SVG | ¿De qué color? · Busca la forma |
 | 10 | Sumas y restas | con dibujos (tachados en resta), hasta 5/10/20 | Sumar · Restar |
-| 11 | Emociones | 8 emociones + respiración guiada | ¿Cómo se siente? |
+| 11 | Emociones | 8 emociones + respiración guiada; tras nombrarla, "¿Qué puedes hacer cuando te sientes {e}?" con una acción que ayuda y dos que no (`emotions[i][3]`, regulación emocional) | ¿Cómo se siente? |
 | 12 | Hora y calendario | reloj SVG (en punto / y media), días, meses | ¿Qué hora es? · ¿Qué día sigue? |
 | 13 | Ciencia | 23 animales (sonido real si existe), hábitat, comida; planta dibujada en SVG con la parte que se ilumina al tocarla; planetas en SVG con tamaño y color reales, ficha con su orden desde el Sol | ¿Qué animal suena? (tortuga y mariposa nunca son respuesta: son callados) · ¿Dónde vive? |
 | 14 | Canciones | 10 canciones reales (Eleven Music, 60 s, 5 × ES/EN) en canciones/<id>.<lang>.mp3 con letra sincronizada en canciones/<id>.<lang>.json (tiempos alineados por Scribe); si faltara el mp3 (o la letra no trae `t`) la voz canta línea a línea; tocar una línea la repite. El ABC en inglés lleva letra ORIGINAL: la clásica ("Now I know my ABCs") la rechaza ElevenLabs por derechos | — |

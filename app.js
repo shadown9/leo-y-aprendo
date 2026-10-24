@@ -47,6 +47,8 @@ const vcolor = v => 'var(--' + v.toLowerCase() + ')';
 const caseIt = s => settings.upper ? s.toUpperCase() : s;
 /* Nombre hablado de una letra ("j" → "jota"): una letra sola la voz la lee mal; vocales y números se dicen tal cual. */
 const letterName = ch => { const l = (T().letters || []).find(x => x[0] === String(ch).toLowerCase()); return l ? l[3] : String(ch); };
+/* Sonido (no nombre) de una letra o pieza: en inglés el sonido fonético ("kuh", no "kay"); en español la primera forma de `sounds` ("ba" de "ba, be, bi"). Las piezas de más de una letra (sílabas) se dicen tal cual. */
+const soundOf = p => { p = String(p); if (p.length !== 1) return p; const t = T(); if (t.phon && t.phon[p.toLowerCase()]) return t.phon[p.toLowerCase()]; return ((t.sounds || {})[p.toLowerCase()] || p).split(',')[0].trim() || p; };
 
 /* ---------- audio: speech + sfx ---------- */
 /* Voces grabadas (voces/<lang>/<hash>.mp3). Si existe el archivo de una frase se usa; si no, la voz del teléfono. */
@@ -321,7 +323,24 @@ function lettersScreen(focus) { Diag.crumb('lettersScreen');
 }
 
 /* ---------- 3. syllables ---------- */
-function sylScreen() { Diag.crumb('sylScreen');
+/* Inglés: no hay sílabas "ma, me, mi"; se enseña a JUNTAR SONIDOS en palabras cortas (c-a-t → cat), con el sonido de cada letra, no su nombre. */
+function blendScreen() { Diag.crumb('sylScreen');
+  const t = T(), u = U(), s = S(), L = settings.lang; const words = t.build.map(b => [b.slice(0, -1).join(''), b[b.length - 1], b.slice(0, -1)]);
+  main.innerHTML = `<section class="screen">${topbar(u.sylT)}${guideHtml(s.syl)}
+    <div class="stage" id="stage" hidden></div>
+    <div class="grid wide" id="cvc">${words.map((w, i) => `<button class="tile ${has('syl:' + L + ':' + w[0]) ? 'done' : ''}" type="button" data-i="${i}"><span class="pic">${w[1]}</span><span class="lbl">${esc(caseIt(w[0]))}</span></button>`).join('')}</div></section>`;
+  bigOpts(main, '#cvc', 3);
+  $$('#cvc .tile').forEach(b => b.onclick = () => { const [word, pic, letters] = words[+b.dataset.i]; Sfx.tap(); award(1, 'syl:' + L + ':' + word); b.classList.add('done'); const st = $('#stage'); st.hidden = false;
+    st.innerHTML = `<div class="pic">${pic}</div><div class="row" id="lets">${letters.map((ch, k) => `<button class="tile ${cls[k % 5]}" type="button" data-k="${k}" style="min-width:84px;min-height:84px;font-size:2.6rem">${caseIt(ch)}</button>`).join('<span class="op" style="font-size:2rem;color:var(--muted)">+</span>')}</div><div class="word" id="wd">${esc(caseIt(word))}</div>
+      <div class="row"><button class="btn big icon" id="say" type="button" aria-label="${esc(u.listen)}">🔊</button></div>`;
+    // Cada letra suena sola (sonido fonético); luego se juntan despacio y sale la palabra.
+    const blend = () => { let k = 0; const step = () => { $$('#lets .tile').forEach((x, j) => x.classList.toggle('good', j === k)); if (k >= letters.length) { $$('#lets .tile').forEach(x => x.classList.add('good')); Voice.seq([{ t: word, rate: .65 }, 500, { t: word, rate: .8 }], () => $$('#lets .tile').forEach(x => x.classList.remove('good'))); return; } const kk = k++; Voice.seq([{ t: soundOf(letters[kk]), rate: .55 }, 250], step); }; step(); };
+    $$('#lets .tile').forEach((x, k) => x.onclick = () => { $$('#lets .tile').forEach(y => y.classList.toggle('good', y === x)); Voice.seq([{ t: soundOf(letters[k]), rate: .55 }], () => x.classList.remove('good')); });
+    $('#say').onclick = blend; $('#wd').onclick = () => Voice.seq([{ t: word, rate: .7 }]);
+    $('#guideText').textContent = letters.join(' + ') + ' = ' + word; blend(); st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+  wire(); guideSay(s.syl);
+}
+function sylScreen() { if (settings.lang === 'en') { blendScreen(); return; } Diag.crumb('sylScreen');
   const t = T(), u = U(), L = settings.lang; let c = t.cons[0]; const vs = ['a', 'e', 'i', 'o', 'u'];
   main.innerHTML = `<section class="screen">${topbar(u.sylT)}${guideHtml(S().syl)}
     <div class="chips" id="cons">${t.cons.map(x => `<button class="chip" type="button" data-c="${x}">${caseIt(x)}</button>`).join('')}</div>
@@ -372,7 +391,7 @@ function wordsScreen() { Diag.crumb('wordsScreen');
 /* Sílabas en voz alta. Una sílaba interna que empieza con r suave ("ri" de mariposa) suena fuerte si se dice sola,
    así que esas palabras se dicen como una sola frase con punto medio: "ma·ri·po·sa" (la voz mantiene la r suave). */
 function softR(parts) { return parts.some((p, i) => i > 0 && /^r[^r]/i.test(p)); }
-function sylSpeech(parts, rate) { return softR(parts) ? [{ t: parts.join('·'), rate: rate || .6 }] : parts.flatMap(p => [{ t: p, rate: rate || .55 }, 350]); }
+function sylSpeech(parts, rate) { return softR(parts) ? [{ t: parts.join('·'), rate: rate || .6 }] : parts.flatMap(p => [{ t: soundOf(p), rate: rate || .55 }, 350]); }
 /* ---------- read-along engine (used by phrases & stories) ---------- */
 function readAlong(container, text, onDone) {
   const words = $$('.w', container); const tokens = text.split(' '); let starts = [], pos = 0;
@@ -398,11 +417,17 @@ function phrasesScreen() { Diag.crumb('phrasesScreen');
     <div class="pager" id="pager">${t.phrases.map((p, k) => `<i data-k="${k}"></i>`).join('')}</div>
   </section>`;
   function show() { const p = t.phrases[i]; const words = p[0].split(' ');
-    $('#stage').innerHTML = `<div class="pagepic">${p[1]}</div><div class="sentence" id="sent">${words.map(w => `<button class="w" type="button" data-w="${esc(w.replace(/[.,!?—"]/g, ''))}">${esc(caseIt(w))}</button>`).join('')}</div>`;
+    $('#stage').innerHTML = `<div class="pagepic" id="ppic">${p[1]}</div><div class="sentence" id="sent">${words.map(w => `<button class="w" type="button" data-w="${esc(w.replace(/[.,!?—"]/g, ''))}">${esc(caseIt(w))}</button>`).join('')}</div><div id="pq" style="width:100%"></div>`;
     $$('#pager i').forEach((d, k) => d.classList.toggle('on', k === i));
     $$('.w', main).forEach(b => b.onclick = () => { $$('.w', main).forEach(x => x.classList.remove('hl')); b.classList.add('hl'); Voice.say(b.dataset.w, { rate: .75, onend: () => b.classList.remove('hl') }); });
     read(); }
-  function read() { Voice.stop(); setTimeout(() => readAlong($('#sent'), t.phrases[i][0], () => award(1, 'phrase:' + L + ':' + i)), 100); }
+  // Comprensión: tras leer, se esconde el dibujo y el niño elige cuál va con la frase (2 dibujos de otras frases como distractores).
+  function quiz() { const p = t.phrases[i]; const pq = $('#pq'); if (!pq || pq.children.length) return; const others = pick(t.phrases.filter(o => o[1] !== p[1]), 2); const opts = shuffle([p].concat(others)); let tries = 0;
+    $('#ppic').hidden = true; pq.innerHTML = `<p class="prompt">${esc(S().phraseQ)}</p><div class="grid">${opts.map(o => `<button class="tile" type="button" data-pic="${esc(o[1])}"><span class="pic">${o[1]}</span></button>`).join('')}</div>`; bigOpts(pq, '.grid', 3);
+    $('#guideText').textContent = S().phraseQ; Voice.seq([S().phraseQ]);
+    $$('[data-pic]', pq).forEach(b => b.onclick = () => { if (b.dataset.pic === p[1]) { markGood(b); Sfx.good(); confetti(); if (tries === 0) { hit('phrase:' + i); award(1); } pq.style.pointerEvents = 'none'; $('#ppic').hidden = false; Voice.seq([cheer(), 400, { t: p[0], rate: .8 }]); $('#next').classList.add('pulse'); }
+      else { tries++; miss('phrase:' + i); b.classList.add('bad'); Sfx.bad(); setTimeout(() => b.classList.remove('bad'), 400); Voice.seq([U().bad, 500, { t: p[0], rate: .8 }]); if (tries >= 2) { const ok = pq.querySelector(`[data-pic="${p[1]}"]`); if (ok) ok.classList.add('pulse'); } } }); }
+  function read() { Voice.stop(); setTimeout(() => readAlong($('#sent'), t.phrases[i][0], () => { award(1, 'phrase:' + L + ':' + i); setTimeout(() => { if (document.contains($('#pq'))) quiz(); }, 500); }), 100); }
   $('#read').onclick = read; $('#next').onclick = () => { Sfx.tap(); i = (i + 1) % t.phrases.length; show(); }; $('#prev').onclick = () => { Sfx.tap(); i = (i - 1 + t.phrases.length) % t.phrases.length; show(); };
   wire(); guideSay(S().phrases, show);
 }
@@ -624,10 +649,10 @@ function gameBuild(focus, opts) { Diag.crumb('gameBuild'); opts = opts || {};
     const slots = $$('.slot', sh.area);
     $$('.piece', sh.area).forEach(b => b.onclick = () => { const i = +b.dataset.i;
       if (i === placed.length) { b.disabled = true; slots[i].textContent = caseIt(parts[i]); slots[i].classList.add('full'); placed.push(i); Sfx.tap();
-        if (placed.length < parts.length) Voice.seq([{ t: parts[i], rate: .7 }]);
+        if (placed.length < parts.length) Voice.seq([{ t: soundOf(parts[i]), rate: .7 }]);
         else { const c = cheer(); sh.fb.textContent = c; Sfx.good(); $$('.slot', sh.area).forEach(x => x.classList.add('good')); if (!bad) { award(2, null, true); won += 2; hit('build:' + word); } adapt('build', !bad); confetti();
           sh.area.style.pointerEvents = 'none'; armWatchdog('build');
-          Voice.seq([{ t: parts[i], rate: .7 }, 500, { t: word, rate: .7 }, 600, c, 600], () => { sh.area.style.pointerEvents = ''; if (document.contains(sh.area)) { r++; round(); } }); } }
+          Voice.seq([{ t: soundOf(parts[i]), rate: .7 }, 500, { t: word, rate: .7 }, 600, c, 600], () => { sh.area.style.pointerEvents = ''; if (document.contains(sh.area)) { r++; round(); } }); } }
       else { if (!bad) { miss('build:' + word); adapt('build', false); } bad = true; wrong(sh, b, null, 2, `.piece[data-i="${placed.length}"]`); } }); }
   $('#guideText').textContent = S().gBuild; round();
 }
@@ -891,7 +916,15 @@ function emotionsScreen() { Diag.crumb('emotionsScreen');
   $$('#emogrid .tile').forEach(b => b.onclick = () => { const e = t.emotions[+b.dataset.e]; Sfx.tap(); const st = $('#stage'); st.hidden = false; award(1, 'emo:' + L + ':' + e[0]); b.classList.add('done');
     st.innerHTML = `<div class="pic" style="font-size:6rem">${e[1]}</div><div class="word">${esc(caseIt(e[0]))}</div><div class="sub" style="font-size:1.1rem">${esc(e[2])}</div>
       <div class="row"><button class="btn big icon" id="say" type="button">🔊</button>${e[0] === t.emotions[6][0] ? `<button class="btn alt icon" id="breathe" type="button" aria-label="${esc(s.breathe)}">🫧</button>` : ''}</div>`;
-    const parts = [fmt(s.emoIs, { e: e[0] }), 500, e[2], 700, fmt(s.emoAsk, { e: e[0] })]; $('#guideText').textContent = fmt(s.emoAsk, { e: e[0] }); Voice.seq(parts); $('#say').onclick = () => Voice.seq(parts);
+    // Regulación emocional: tras nombrar la emoción, "¿qué puedes hacer?" con una acción que ayuda y dos que no.
+    const cope = e[3]; const copeQ = fmt(s.copeQ, { e: e[0] });
+    const askCope = () => { if (!cope || $('#cope')) return; const opts = shuffle(cope.map((o, k) => [o, k])); let tries = 0;
+      st.insertAdjacentHTML('beforeend', `<div id="cope" style="width:100%"><p class="prompt">${esc(copeQ)}</p><div class="grid">${opts.map(([o, k]) => `<button class="tile keep" type="button" data-k="${k}" style="--cube:var(--card)"><span class="pic">${o[1]}</span><span class="lbl" style="color:var(--fg)">${esc(o[0])}</span></button>`).join('')}</div></div>`); bigOpts($('#cope'), '.grid', 1);
+      $('#guideText').textContent = copeQ; Voice.seq([copeQ].concat(opts.flatMap(([o]) => [400, { t: o[0], rate: .85 }])));
+      $$('#cope [data-k]').forEach(b => b.onclick = () => { const o = cope[+b.dataset.k]; if (o[2]) { markGood(b); Sfx.good(); confetti(); if (tries === 0) { hit('emo:' + e[0]); award(1); } $('#cope').style.pointerEvents = 'none'; Voice.seq([{ t: o[0], rate: .85 }, 300, s.copeOk, 300, cheer()]); }
+        else { tries++; miss('emo:' + e[0]); b.classList.add('bad'); Sfx.bad(); setTimeout(() => b.classList.remove('bad'), 400); Voice.seq([{ t: o[0], rate: .85 }, 300, s.copeNo]); if (tries >= 2) { const ok = $$('#cope [data-k]').find(x => cope[+x.dataset.k][2]); if (ok) ok.classList.add('pulse'); } } });
+      $('#cope').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
+    const parts = [fmt(s.emoIs, { e: e[0] }), 500, e[2], 700, fmt(s.emoAsk, { e: e[0] })]; $('#guideText').textContent = fmt(s.emoAsk, { e: e[0] }); Voice.seq(parts, () => setTimeout(askCope, 1500)); $('#say').onclick = () => Voice.seq(parts);
     const br = $('#breathe'); if (br) br.onclick = () => { const pic = st.querySelector('.pic'); pic.style.transition = 'transform 3s ease-in-out'; Voice.seq([s.breathe]); pic.style.transform = 'scale(1.5)'; setTimeout(() => pic.style.transform = 'scale(1)', 3200); };
     st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
   wire(); guideSay(s.emotions);
@@ -1115,7 +1148,7 @@ function gameWrite(focus, opts) { Diag.crumb('gameWrite'); opts = opts || {};
     const slots = $$('.slot', sh.area);
     $$('[data-ch]', sh.area).forEach(b => b.onclick = () => { if (b.disabled) return;
       if (b.dataset.ch === letters[pos]) { b.disabled = true; slots[pos].textContent = caseIt(letters[pos]); slots[pos].classList.add('full'); pos++; Sfx.tap(); const snd = (t.sounds || {})[b.dataset.ch] || b.dataset.ch;
-        if (pos < letters.length) Voice.seq([{ t: snd.split(',')[0], rate: .6 }]);
+        if (pos < letters.length) Voice.seq([{ t: soundOf(b.dataset.ch), rate: .6 }]);
         else { $$('.slot', sh.area).forEach(x => x.classList.add('good')); if (!bad) { hit('write:' + word); won += 2; } adapt('write', !bad); correct(sh, b, bad ? 0 : 2, () => { r++; round(); }, [{ t: word, rate: .75 }, 300, fmt(s.wroteIt, { w: word }), 300]); } }
       else { if (!bad) { miss('write:' + word); adapt('write', false); } bad = true; const ok = $$('[data-ch]', sh.area).find(x => !x.disabled && x.dataset.ch === letters[pos]); wrong(sh, b, null, 2, ok ? `[data-i="${ok.dataset.i}"]` : null); Voice.seq([u.bad, 400, fmt(s.nextLetter, { l: letterName(letters[pos]) })]); } }); }
   $('#guideText').textContent = s.gWrite; round();
