@@ -213,6 +213,7 @@ select{font:inherit;padding:10px 12px;border-radius:14px;border:3px solid var(--
 #words.cubes .tile{min-height:var(--h,110px)}
 #words.cubes .tile .pic{font-size:clamp(2.6rem,12vw,3.6rem)}
 canvas.trace{max-width:min(92vw,520px)}
+canvas.trace.good{border-color:var(--good);border-style:solid;box-shadow:0 0 0 6px rgba(46,196,182,.35)}
 .drum{width:min(60vw,220px);height:min(60vw,220px);font-size:clamp(4rem,30vw,7rem)}
 .door{padding:22px 10px;font-size:1.35rem;min-height:150px}
 .door .big{font-size:3rem}

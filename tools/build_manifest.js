@@ -77,7 +77,7 @@ for (const L of ['es', 'en']) {
   // Animales del perfil
   Object.values(t.avatarNames || {}).forEach(n => { add(n); add(fmt(s.animalIs, { a: n })); });
   // Saludo sin nombre (el nombre del niño se dice con la voz del teléfono)
-  add(L === 'es' ? '¡Hola!' : 'Hi!'); add(s.home);
+  add(L === 'es' ? '¡Hola!' : 'Hi!'); add(s.home); add(s.keepGoing); add(s.traceHelp); add(s.traceInside);
   out[L] = {}; [...set].sort().forEach(x => out[L][x] = h(L + '|' + x));
 }
 fs.mkdirSync(path.join(__dirname, '..', 'voces'), { recursive: true });

@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v33';
+const APP_VERSION = 'v34';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -458,7 +458,7 @@ function traceScreen(startLetter) { Diag.crumb('traceScreen');
     <div class="tracewrap">
       <div class="row"><button class="chip" id="caseU" type="button">${esc(u.upper)}</button><button class="chip" id="caseL" type="button">${esc(u.lower)}</button></div>
       <canvas class="trace" id="cv" width="600" height="600"></canvas>
-      <div class="row"><button class="btn alt icon" id="clear" type="button" aria-label="${esc(u.clear)}">🧽</button><button class="btn big icon" id="say" type="button" aria-label="${esc(u.listen)}">🔊</button><button class="btn good icon" id="done" type="button" aria-label="${esc(u.ready)}">✅</button></div>
+      <div class="row"><button class="btn alt icon" id="clear" type="button" aria-label="${esc(u.clear)}">🧽</button><button class="btn big icon" id="say" type="button" aria-label="${esc(u.listen)}">🔊</button></div>
       <div class="feedback" id="fb"></div></div>
   </section>`;
   const cv = $('#cv'), ctx = cv.getContext('2d'); const guide = document.createElement('canvas'); guide.width = guide.height = 600; const gctx = guide.getContext('2d');
@@ -475,17 +475,22 @@ function traceScreen(startLetter) { Diag.crumb('traceScreen');
   let drawing = false, last = null; const pt = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * 600 / r.width, y: (e.clientY - r.top) * 600 / r.height }; };
   cv.onpointerdown = e => { drawing = true; last = pt(e); strokeColor = colors[Math.floor(Math.random() * 5)]; cv.setPointerCapture(e.pointerId); ctx.strokeStyle = strokeColor; ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(last.x + .1, last.y); ctx.stroke(); };
   cv.onpointermove = e => { if (!drawing) return; const p = pt(e); ctx.strokeStyle = strokeColor; ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke(); last = p; };
-  cv.onpointerup = cv.onpointercancel = () => { drawing = false; };
+  let checkTimer = null, nudges = 0, locked = false;
+  cv.onpointerup = cv.onpointercancel = () => { drawing = false; clearTimeout(checkTimer); checkTimer = setTimeout(check, 700); };
   function coverage() { const g = gctx.getImageData(0, 0, 600, 600).data, d = ctx.getImageData(0, 0, 600, 600).data; let tot = 0, hit = 0, outside = 0, inkTotal = 0;
     for (let i = 3; i < g.length; i += 4 * 3) { const ink = d[i] > 200 && !(d[i - 3] === 0 && d[i - 2] === 0 && d[i - 1] === 0); if (ink) inkTotal++;
       if (g[i] > 128) { tot++; if (ink) hit++; } else if (ink) outside++; }
     return { cov: tot ? hit / tot : 0, outside: inkTotal ? outside / inkTotal : 0 }; }
-  $('#done').onclick = () => { const r = coverage();
-    if (r.cov > .35 && r.outside < .6) { $('#fb').textContent = cheer(); Sfx.good(); confetti(); award(1, 'trace:' + L + (upper ? '' : ':min'));
-      if (upper && !isDigit()) { Voice.seq([cheer(), 700, S().nowLower, 400], () => { upper = false; draw(); Voice.seq([{ t: letterName(L), rate: .6 }]); }); }
-      else { const idx = letters.indexOf(L); Voice.seq([cheer(), 700, S().next, 300], () => { L = letters[(idx + 1) % letters.length]; upper = true; draw(); Voice.seq([{ t: letterName(L), rate: .6 }]); $$('#lchips .chip').find(b => b.dataset.l === L).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }); } }
-    else { $('#fb').textContent = u.bad; Sfx.bad(); miss('trace:' + L); Voice.seq([u.bad, 500, S().trace]); } };
-  $('#clear').onclick = () => { Sfx.tap(); draw(); }; $('#say').onclick = () => Voice.say(letterName(L));
+  // Al levantar el dedo la app decide sola (la niña de 5 años de Junior pintó la letra y no supo qué más hacer con el ✅):
+  // si la letra está cubierta, celebra y sigue; si falta, anima con voz; nunca "casi".
+  function check() { if (locked || !document.contains(cv)) return; const r = coverage();
+    if (r.cov > .35 && r.outside < .6) { locked = true; nudges = 0; $('#fb').textContent = cheer(); Sfx.good(); confetti(); cv.classList.add('good'); award(1, 'trace:' + L + (upper ? '' : ':min'));
+      const go = () => { locked = false; cv.classList.remove('good'); draw(); Voice.seq([{ t: letterName(L), rate: .6 }]); };
+      if (upper && !isDigit()) { Voice.seq([cheer(), 700, { t: letterName(L), rate: .6 }, 500, S().nowLower, 400], () => { upper = false; go(); }); }
+      else { const idx = letters.indexOf(L); Voice.seq([cheer(), 700, S().next, 300], () => { L = letters[(idx + 1) % letters.length]; upper = true; go(); const c = $$('#lchips .chip').find(b => b.dataset.l === L); if (c) c.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }); } }
+    else if (r.cov > .08) { nudges++; if (nudges <= 2) Voice.seq([S().keepGoing]); else if (nudges === 3) { miss('trace:' + L); Voice.seq([S().traceHelp]); } }
+    else if (r.outside > .8 && r.cov < .05) { Voice.seq([S().traceInside]); } }
+  $('#clear').onclick = () => { Sfx.tap(); nudges = 0; draw(); }; $('#say').onclick = () => Voice.say(letterName(L));
   $('#caseU').onclick = () => { upper = true; draw(); }; $('#caseL').onclick = () => { upper = false; draw(); };
   $$('#lchips .chip').forEach(b => b.onclick = () => { L = b.dataset.l; Sfx.tap(); Voice.seq([{ t: letterName(L), rate: .6 }]); draw(); });
   wire(); draw(); document.fonts && document.fonts.ready.then(draw); Voice.seq([S().trace, 500, { t: letterName(L), rate: .6 }]);
