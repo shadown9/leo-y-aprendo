@@ -1041,15 +1041,18 @@ function songsScreen() { Diag.crumb('songsScreen');
   bigOpts(main, '#songs', 2);
   $$('#songs .tile').forEach(b => b.onclick = () => { const sg = t.songs[+b.dataset.s]; Sfx.tap(); const st = $('#stage'); st.hidden = false; st.innerHTML = `<div class="pic" style="font-size:4rem">${sg[1]}</div><div class="word" style="font-size:1.6rem;letter-spacing:0">${esc(sg[0])}</div><div class="lyrics" id="lyrics"></div><div class="row"><button class="btn big icon" id="play" type="button">▶️</button><button class="btn alt icon" id="stop" type="button">⏹️</button></div>`;
     fetch(`canciones/${sg[2]}.${L}.json`, { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(j => {
-      if (!j) { $('#lyrics').innerHTML = `<p class="prompt">${esc(u.noSongs)}</p>`; Voice.seq([u.noSongs]); return; }
+      if (!j) { $('#lyrics').innerHTML = `<p class="prompt">${esc(u.noSongs)}</p>`; return; }
       $('#lyrics').innerHTML = j.lines.map((ln, i) => `<p class="line" data-i="${i}">${esc(ln.text)}</p>`).join('');
       const audio = new Audio(`canciones/${sg[2]}.${L}.mp3`); let timer = null; const lines = $$('.line', st); const hl = cur => lines.forEach((el, i) => el.classList.toggle('hl', i === cur));
       const sync = () => { const ct = audio.currentTime; let cur = -1; j.lines.forEach((ln, i) => { if (ct >= ln.t) cur = i; }); hl(cur); if (cur >= 0) lines[cur].scrollIntoView({ block: 'center', behavior: 'smooth' }); };
-      // Mientras no exista el mp3 (o la letra no tenga tiempos), la voz "canta" la letra línea a línea con resaltado.
-      const sing = () => { let i = 0; const step = () => { if (!document.contains(st)) return; if (i >= j.lines.length) { hl(-1); confetti(); Voice.seq([cheer()]); return; } hl(i); lines[i].scrollIntoView({ block: 'center', behavior: 'smooth' }); const k = i++; Voice.seq([{ t: j.lines[k].text, rate: .85 }, 250], step); }; step(); };
-      const stop = () => { audio.pause(); audio.currentTime = 0; clearInterval(timer); Voice.stop(); hl(-1); };
-      $('#play').onclick = () => { stop(); award(1, 'song:' + L + ':' + sg[2]); if (j.lines.some(ln => ln.t == null)) { sing(); return; } audio.play().then(() => { timer = setInterval(sync, 250); }).catch(sing); };
-      $('#stop').onclick = stop; $$('.line', st).forEach((el, i) => el.onclick = () => { Voice.stop(); hl(i); Voice.seq([{ t: j.lines[i].text, rate: .85 }], () => hl(-1)); });
+      // Solo la canción grabada: si no carga, se avisa y se reintenta; NUNCA se lee la letra con la voz (orden del Jefe).
+      audio.preload = 'auto'; let retried = false;
+      const stop = () => { audio.pause(); audio.currentTime = 0; clearInterval(timer); hl(-1); };
+      const play = () => { Voice.stop(); audio.play().then(() => { clearInterval(timer); timer = setInterval(sync, 250); }).catch(err => { Diag.log('song', (err && err.message || err) + ' ' + sg[2] + '.' + L); if (!retried) { retried = true; audio.load(); setTimeout(play, 500); } else toast(u.songError, 3000); }); };
+      $('#play').onclick = () => { stop(); award(1, 'song:' + L + ':' + sg[2]); play(); };
+      $('#stop').onclick = stop;
+      // Tocar una línea salta la canción a ese punto (karaoke), no la lee.
+      $$('.line', st).forEach((el, i) => el.onclick = () => { if (j.lines[i].t == null) return; audio.currentTime = j.lines[i].t; hl(i); if (audio.paused) play(); });
       audio.onended = () => { clearInterval(timer); hl(-1); confetti(); Voice.seq([cheer()]); };
     }).catch(() => { $('#lyrics').innerHTML = `<p class="prompt">${esc(u.noSongs)}</p>`; });
     st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });

@@ -10,8 +10,17 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
   // Letra de las canciones: primero la red (cambia cuando se regraba una canción), la guardada solo sin internet
   if (url.pathname.includes('/canciones/') && url.pathname.endsWith('.json')) { e.respondWith(caches.open('lya-voces').then(c => fetch(e.request).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; }).catch(() => c.match(e.request)))); return; }
-  // Voces grabadas: se guardan la primera vez que suenan (así funcionan sin internet después)
-  if ((url.pathname.includes('/voces/') || url.pathname.includes('/sonidos/') || url.pathname.includes('/canciones/')) && /\.(mp3|json)$/.test(url.pathname) && !url.pathname.endsWith('index.json')) { e.respondWith(caches.open('lya-voces').then(c => c.match(e.request).then(r => r || fetch(e.request).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; })))); return; }
+  // Audios (voces, sonidos, canciones): se guardan completos la primera vez y se sirven con soporte de rangos.
+  // El reproductor del teléfono pide el mp3 por trozos (cabecera Range); si se le devuelve la respuesta completa guardada, play() falla y la app cae a la voz leyendo.
+  if ((url.pathname.includes('/voces/') || url.pathname.includes('/sonidos/') || url.pathname.includes('/canciones/')) && url.pathname.endsWith('.mp3')) {
+    e.respondWith((async () => {
+      const c = await caches.open('lya-voces'); const key = url.href; let full = await c.match(key);
+      if (!full) { const res = await fetch(key); if (!res.ok) return res; await c.put(key, res.clone()); full = await c.match(key) || res; }
+      const range = e.request.headers.get('range'); if (!range) return full;
+      const buf = await full.arrayBuffer(); const m = /bytes=(\d+)-(\d*)/.exec(range); const start = m ? +m[1] : 0; const end = m && m[2] ? Math.min(+m[2], buf.byteLength - 1) : buf.byteLength - 1;
+      return new Response(buf.slice(start, end + 1), { status: 206, headers: { 'Content-Type': 'audio/mpeg', 'Content-Range': `bytes ${start}-${end}/${buf.byteLength}`, 'Content-Length': String(end - start + 1), 'Accept-Ranges': 'bytes' } });
+    })()); return; }
+  if ((url.pathname.includes('/voces/') || url.pathname.includes('/sonidos/')) && url.pathname.endsWith('.json') && !url.pathname.endsWith('index.json')) { e.respondWith(caches.open('lya-voces').then(c => c.match(e.request).then(r => r || fetch(e.request).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; })))); return; }
   // App shell: cache first, then network; update cache in the background
   e.respondWith(caches.match(e.request).then(cached => { const net = fetch(e.request).then(res => { if (res && res.ok) caches.open(CACHE_VERSION).then(c => c.put(e.request, res.clone())); return res; }).catch(() => cached); return cached || net; }));
 });
