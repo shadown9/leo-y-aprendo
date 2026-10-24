@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v43';
+const APP_VERSION = 'v44';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -82,6 +82,10 @@ const Clips = {
     const pr = a.play(); if (pr && pr.catch) pr.catch(e => fail('play() rechazado: ' + e.message)); },
   stop() { if (this.current) { const a = this.current; try { a._tk = null; a.onended = a.onerror = null; a.pause(); a.removeAttribute('src'); a.load(); } catch (e) {} this.current = null; } },
 };
+/* Un solo reproductor de canciones en toda la app: al elegir otra canción o salir de la pantalla, la anterior se apaga. */
+const Song = { a: null, onstop: null,
+  set(a, onstop) { this.stop(); this.a = a; this.onstop = onstop; },
+  stop() { const a = this.a, f = this.onstop; this.a = null; this.onstop = null; if (a) { try { a.onended = null; a.pause(); a.removeAttribute('src'); a.load(); } catch (e) {} } if (f) f(); } };
 const Voice = {
   voices: [], unlocked: false, warned: false,
   load() { try { this.voices = speechSynthesis.getVoices() || []; } catch (e) { this.voices = []; } },
@@ -135,7 +139,8 @@ const Voice = {
       u.onstart = () => { u._started = true; };
     } catch (e) { Diag.log('speech', 'speak() lanzó: ' + e.message); showBanner(U().noVoice); }
   },
-  stop() { this._seq++; Clips.stop(); try { speechSynthesis.cancel(); } catch (e) {} },
+  hush() { this._seq++; Clips.stop(); try { speechSynthesis.cancel(); } catch (e) {} },
+  stop() { this.hush(); Song.stop(); },
   _seq: 0,
   /* Narración con pausas: parts = ['A', 1200, {t:'avión', rate:.6}, 800, ...]. Se cancela sola al cambiar de pantalla. */
   seq(parts, onDone) {
@@ -1072,7 +1077,7 @@ function songsScreen() { Diag.crumb('songsScreen');
     <div class="grid" id="songs">${t.songs.map((sg, i) => `<button class="tile keep ${has('song:' + L + ':' + sg[2]) ? 'done' : ''}" type="button" data-s="${i}" style="--cube:var(--card)"><span class="pic">${sg[1]}</span><span class="lbl" style="color:var(--fg)">${esc(sg[0])}</span></button>`).join('')}</div>
     <div class="stage" id="stage" hidden></div></section>`;
   bigOpts(main, '#songs', 2);
-  $$('#songs .tile').forEach(b => b.onclick = () => { const sg = t.songs[+b.dataset.s]; Sfx.tap(); const st = $('#stage'); st.hidden = false; st.innerHTML = `<div class="pic" style="font-size:4rem">${sg[1]}</div><div class="word" style="font-size:1.6rem;letter-spacing:0">${esc(sg[0])}</div><div class="lyrics" id="lyrics"></div><div class="row"><button class="btn big icon" id="play" type="button">▶️</button><button class="btn alt icon" id="stop" type="button">⏹️</button></div>`;
+  $$('#songs .tile').forEach(b => b.onclick = () => { const sg = t.songs[+b.dataset.s]; Song.stop(); Sfx.tap(); const st = $('#stage'); st.hidden = false; st.innerHTML = `<div class="pic" style="font-size:4rem">${sg[1]}</div><div class="word" style="font-size:1.6rem;letter-spacing:0">${esc(sg[0])}</div><div class="lyrics" id="lyrics"></div><div class="row"><button class="btn big icon" id="play" type="button">▶️</button><button class="btn alt icon" id="stop" type="button">⏹️</button></div>`;
     fetch(`canciones/${sg[2]}.${L}.json`, { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(j => {
       if (!j) { $('#lyrics').innerHTML = `<p class="prompt">${esc(u.noSongs)}</p>`; return; }
       $('#lyrics').innerHTML = j.lines.map((ln, i) => `<p class="line" data-i="${i}">${esc(ln.text)}</p>`).join('');
@@ -1080,8 +1085,9 @@ function songsScreen() { Diag.crumb('songsScreen');
       const sync = () => { const ct = audio.currentTime; let cur = -1; j.lines.forEach((ln, i) => { if (ct >= ln.t) cur = i; }); hl(cur); if (cur >= 0) lines[cur].scrollIntoView({ block: 'center', behavior: 'smooth' }); };
       // Solo la canción grabada: si no carga, se avisa y se reintenta; NUNCA se lee la letra con la voz (orden del Jefe).
       audio.preload = 'auto'; let retried = false;
-      const stop = () => { audio.pause(); audio.currentTime = 0; clearInterval(timer); hl(-1); };
-      const play = () => { Voice.stop(); audio.play().then(() => { clearInterval(timer); timer = setInterval(sync, 250); }).catch(err => { Diag.log('song', (err && err.message || err) + ' ' + sg[2] + '.' + L); if (!retried) { retried = true; audio.load(); setTimeout(play, 500); } else toast(u.songError, 3000); }); };
+      Song.set(audio, () => { clearInterval(timer); hl(-1); });
+      const stop = () => { if (Song.a !== audio) return; audio.pause(); audio.currentTime = 0; clearInterval(timer); hl(-1); };
+      const play = () => { if (Song.a !== audio) return; Voice.hush(); audio.play().then(() => { clearInterval(timer); timer = setInterval(sync, 250); }).catch(err => { Diag.log('song', (err && err.message || err) + ' ' + sg[2] + '.' + L); if (Song.a !== audio) return; if (!retried) { retried = true; audio.load(); setTimeout(play, 500); } else toast(u.songError, 3000); }); };
       $('#play').onclick = () => { stop(); award(1, 'song:' + L + ':' + sg[2]); play(); };
       $('#stop').onclick = stop;
       // Tocar una línea salta la canción a ese punto (karaoke), no la lee.
