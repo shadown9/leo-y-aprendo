@@ -1,36 +1,47 @@
 {
  "lines": [
   {
+   "t": 9.62,
    "text": "Monday, Tuesday, Wednesday"
   },
   {
+   "t": 13.2,
    "text": "Thursday, Friday too"
   },
   {
+   "t": 15.6,
    "text": "Saturday and Sunday"
   },
   {
+   "t": 16.82,
    "text": "Seven days in the week for you!"
   },
   {
+   "t": 22.82,
    "text": "Monday I go to school"
   },
   {
+   "t": 25.22,
    "text": "Tuesday I play with my dog"
   },
   {
+   "t": 40.84,
    "text": "Wednesday I paint a picture"
   },
   {
+   "t": 45.6,
    "text": "Thursday I sing this song"
   },
   {
+   "t": 50.4,
    "text": "Friday I hug my mom"
   },
   {
+   "t": 54.0,
    "text": "Saturday and Sunday, time to rest!"
   },
   {
+   "t": 57.01,
    "text": "Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"
   }
  ]

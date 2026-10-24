@@ -1,27 +1,167 @@
 {
  "vocales": {
   "style": "Happy children's educational song, cheerful female singer, ukulele and hand claps, slow clear tempo, simple catchy melody, kids choir on the chorus",
-  "es": {"lyrics": ["A, E, I, O, U", "¡Las vocales canto yo!", "A de avión que vuela alto", "E de elefante, ¡qué grandote!", "I de iguana en la rama", "O de oso que se abraza", "U de uva dulce y rica", "A, E, I, O, U", "¡Las vocales ya sé yo!", "A, E, I, O, U", "¡Cántalas conmigo tú!"]},
-  "en": {"lyrics": ["A, E, I, O, U", "The vowels, I sing them too!", "A is for apple, red and round", "E for elephant, big and loud", "I for insect, small and quick", "O for octopus in the sea", "U for umbrella in the rain", "A, E, I, O, U", "Now I know my vowels, yahoo!", "A, E, I, O, U", "Sing them with me, you can too!"]}
+  "es": {
+   "lyrics": [
+    "A, E, I, O, U",
+    "¡Las vocales canto yo!",
+    "A de avión que vuela alto",
+    "E de elefante, ¡qué grandote!",
+    "I de iguana en la rama",
+    "O de oso que se abraza",
+    "U de uva dulce y rica",
+    "A, E, I, O, U",
+    "¡Las vocales ya sé yo!",
+    "A, E, I, O, U",
+    "¡Cántalas conmigo tú!"
+   ]
+  },
+  "en": {
+   "lyrics": [
+    "A, E, I, O, U",
+    "The vowels, I sing them too!",
+    "A is for apple, red and round",
+    "E for elephant, big and loud",
+    "I for insect, small and quick",
+    "O for octopus in the sea",
+    "U for umbrella in the rain",
+    "A, E, I, O, U",
+    "Now I know my vowels, yahoo!",
+    "A, E, I, O, U",
+    "Sing them with me, you can too!"
+   ]
+  }
  },
  "abc": {
   "style": "Playful children's alphabet song, warm female singer, acoustic guitar and xylophone, steady medium tempo, very clear pronunciation of each letter, kids clapping",
-  "es": {"lyrics": ["A, B, C, D, E, F, G", "H, I, J, K, L, M, N", "Ñ, O, P, Q, R, S, T", "U, V, W, X, Y, Z", "¡El abecedario es muy fácil de aprender!", "¡Canta conmigo otra vez!", "A, B, C, D, E, F, G", "H, I, J, K, L, M, N", "Ñ, O, P, Q, R, S, T", "U, V, W, X, Y, Z", "¡Ya me lo sé, de la A a la Z!"]},
-  "en": {"lyrics": ["A, B, C, D, E, F, G", "H, I, J, K, L, M, N, O, P", "Q, R, S, T, U, V", "W, X, Y and Z", "Now I know my ABCs", "Next time won't you sing with me?", "A, B, C, D, E, F, G", "H, I, J, K, L, M, N, O, P", "Q, R, S, T, U, V", "W, X, Y and Z", "I know them all, from A to Z!"]}
+  "es": {
+   "lyrics": [
+    "A, B, C, D, E, F, G",
+    "H, I, J, K, L, M, N",
+    "Ñ, O, P, Q, R, S, T",
+    "U, V, W, X, Y, Z",
+    "¡El abecedario es muy fácil de aprender!",
+    "¡Canta conmigo otra vez!",
+    "A, B, C, D, E, F, G",
+    "H, I, J, K, L, M, N",
+    "Ñ, O, P, Q, R, S, T",
+    "U, V, W, X, Y, Z",
+    "¡Ya me lo sé, de la A a la Z!"
+   ]
+  },
+  "en": {
+   "lyrics": [
+    "A, B, C, D, E, F, G",
+    "H, I, J, K, L, M, N",
+    "O, P, Q, R, S, T, U",
+    "V, W, X, Y and Z",
+    "Twenty-six letters, big and small",
+    "Let's sing them loud and learn them all!",
+    "A, B, C, D, E, F, G",
+    "H, I, J, K, L, M, N",
+    "O, P, Q, R, S, T, U",
+    "V, W, X, Y and Z",
+    "Every letter, every sound: I know them all around!"
+   ]
+  }
  },
  "numeros": {
   "style": "Bouncy children's counting song, friendly female singer, piano and tambourine, counting clearly from one to ten, cheerful and energetic",
-  "es": {"lyrics": ["Uno, dos, tres, ¡vamos a contar!", "Cuatro, cinco, seis, ¡no voy a parar!", "Siete, ocho, nueve, ¡casi llego al fin!", "¡Diez! ¡Conté hasta diez!", "Un sol, dos manos, tres pollitos", "Cuatro patas, cinco deditos", "Seis globos, siete estrellas", "Ocho peces, nueve flores", "¡Y diez abrazos para ti!", "Uno, dos, tres, cuatro, cinco", "Seis, siete, ocho, nueve, ¡diez!"]},
-  "en": {"lyrics": ["One, two, three, let's count with me!", "Four, five, six, as easy as can be!", "Seven, eight, nine, almost at the end!", "Ten! I counted to ten!", "One sun, two hands, three little chicks", "Four paws, five fingers, six balloons", "Seven stars and eight fish", "Nine flowers in the sun", "And ten big hugs for you!", "One, two, three, four, five", "Six, seven, eight, nine, ten!"]}
+  "es": {
+   "lyrics": [
+    "Uno, dos, tres, ¡vamos a contar!",
+    "Cuatro, cinco, seis, ¡no voy a parar!",
+    "Siete, ocho, nueve, ¡casi llego al fin!",
+    "¡Diez! ¡Conté hasta diez!",
+    "Un sol, dos manos, tres pollitos",
+    "Cuatro patas, cinco deditos",
+    "Seis globos, siete estrellas",
+    "Ocho peces, nueve flores",
+    "¡Y diez abrazos para ti!",
+    "Uno, dos, tres, cuatro, cinco",
+    "Seis, siete, ocho, nueve, ¡diez!"
+   ]
+  },
+  "en": {
+   "lyrics": [
+    "One, two, three, let's count with me!",
+    "Four, five, six, as easy as can be!",
+    "Seven, eight, nine, almost at the end!",
+    "Ten! I counted to ten!",
+    "One sun, two hands, three little chicks",
+    "Four paws, five fingers, six balloons",
+    "Seven stars and eight fish",
+    "Nine flowers in the sun",
+    "And ten big hugs for you!",
+    "One, two, three, four, five",
+    "Six, seven, eight, nine, ten!"
+   ]
+  }
  },
  "dias": {
   "style": "Gentle children's song about the days of the week, soft female singer, acoustic guitar, calm sing-along tempo, clear words",
-  "es": {"lyrics": ["Lunes, martes, miércoles", "Jueves, viernes también", "Sábado y domingo", "¡Siete días tiene la semana!", "Lunes voy a la escuela", "Martes juego con mi perro", "Miércoles pinto un dibujo", "Jueves canto esta canción", "Viernes abrazo a mamá", "Sábado y domingo, ¡a descansar!", "Lunes, martes, miércoles, jueves, viernes, sábado, domingo"]},
-  "en": {"lyrics": ["Monday, Tuesday, Wednesday", "Thursday, Friday too", "Saturday and Sunday", "Seven days in the week for you!", "Monday I go to school", "Tuesday I play with my dog", "Wednesday I paint a picture", "Thursday I sing this song", "Friday I hug my mom", "Saturday and Sunday, time to rest!", "Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"]}
+  "es": {
+   "lyrics": [
+    "Lunes, martes, miércoles",
+    "Jueves, viernes también",
+    "Sábado y domingo",
+    "¡Siete días tiene la semana!",
+    "Lunes voy a la escuela",
+    "Martes juego con mi perro",
+    "Miércoles pinto un dibujo",
+    "Jueves canto esta canción",
+    "Viernes abrazo a mamá",
+    "Sábado y domingo, ¡a descansar!",
+    "Lunes, martes, miércoles, jueves, viernes, sábado, domingo"
+   ]
+  },
+  "en": {
+   "lyrics": [
+    "Monday, Tuesday, Wednesday",
+    "Thursday, Friday too",
+    "Saturday and Sunday",
+    "Seven days in the week for you!",
+    "Monday I go to school",
+    "Tuesday I play with my dog",
+    "Wednesday I paint a picture",
+    "Thursday I sing this song",
+    "Friday I hug my mom",
+    "Saturday and Sunday, time to rest!",
+    "Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"
+   ]
+  }
  },
  "colores": {
   "style": "Colorful upbeat children's song, bright female singer, ukulele, glockenspiel and hand claps, medium tempo, joyful",
-  "es": {"lyrics": ["Rojo como una manzana", "Azul como el mar", "Amarillo como el sol", "Verde como un sapo saltarín", "Naranja como una naranja", "Morado como la uva", "Rosado como una flor", "¡Los colores están en todo lugar!", "Rojo, azul, amarillo, verde", "Naranja, morado, rosado", "¡Mira a tu alrededor y los verás!"]},
-  "en": {"lyrics": ["Red like an apple", "Blue like the sea", "Yellow like the sun", "Green like a jumping frog", "Orange like an orange", "Purple like a grape", "Pink like a flower", "Colors are everywhere you look!", "Red, blue, yellow, green", "Orange, purple, pink", "Look around and you will see!"]}
+  "es": {
+   "lyrics": [
+    "Rojo como una manzana",
+    "Azul como el mar",
+    "Amarillo como el sol",
+    "Verde como un sapo saltarín",
+    "Naranja como una naranja",
+    "Morado como la uva",
+    "Rosado como una flor",
+    "¡Los colores están en todo lugar!",
+    "Rojo, azul, amarillo, verde",
+    "Naranja, morado, rosado",
+    "¡Mira a tu alrededor y los verás!"
+   ]
+  },
+  "en": {
+   "lyrics": [
+    "Red like an apple",
+    "Blue like the sea",
+    "Yellow like the sun",
+    "Green like a jumping frog",
+    "Orange like an orange",
+    "Purple like a grape",
+    "Pink like a flower",
+    "Colors are everywhere you look!",
+    "Red, blue, yellow, green",
+    "Orange, purple, pink",
+    "Look around and you will see!"
+   ]
+  }
  }
 }

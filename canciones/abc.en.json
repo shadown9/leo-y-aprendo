@@ -1,37 +1,48 @@
 {
  "lines": [
   {
+   "t": 9.66,
    "text": "A, B, C, D, E, F, G"
   },
   {
-   "text": "H, I, J, K, L, M, N, O, P"
+   "t": 11.68,
+   "text": "H, I, J, K, L, M, N"
   },
   {
-   "text": "Q, R, S, T, U, V"
+   "t": 14.48,
+   "text": "O, P, Q, R, S, T, U"
   },
   {
-   "text": "W, X, Y and Z"
+   "t": 16.88,
+   "text": "V, W, X, Y and Z"
   },
   {
-   "text": "Now I know my ABCs"
+   "t": 18.58,
+   "text": "Twenty-six letters, big and small"
   },
   {
-   "text": "Next time won't you sing with me?"
+   "t": 21.34,
+   "text": "Let's sing them loud and learn them all!"
   },
   {
+   "t": 38.62,
    "text": "A, B, C, D, E, F, G"
   },
   {
-   "text": "H, I, J, K, L, M, N, O, P"
+   "t": 41.1,
+   "text": "H, I, J, K, L, M, N"
   },
   {
-   "text": "Q, R, S, T, U, V"
+   "t": 43.28,
+   "text": "O, P, Q, R, S, T, U"
   },
   {
-   "text": "W, X, Y and Z"
+   "t": 46.1,
+   "text": "V, W, X, Y and Z"
   },
   {
-   "text": "I know them all, from A to Z!"
+   "t": 48.12,
+   "text": "Every letter, every sound: I know them all around!"
   }
  ]
 }

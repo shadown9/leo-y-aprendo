@@ -72,6 +72,8 @@ send_lang = bool(re.search(r'v2_5|turbo|flash', args.model))  # language_code so
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from voz_comun import spoken, needs_carrier, CARRIER  # reglas compartidas: pronunciacion.json, números en palabras, qué va con portadora
 from recortar_silencio import trim as trim_tail       # quita el silencio sobrante del final (la API deja 0,1-0,35 s)
+from normalizar_volumen import normalize as norm_vol  # pico a -3 dB: los recortes de portadora salían más bajos que las frases
+def post(dest): trim_tail(dest); norm_vol(dest)
 def cut_from_carrier(lang, text, body, dest):
     import base64, subprocess
     target = body['text']; carrier = CARRIER[lang].replace('{x}', target)
@@ -92,11 +94,11 @@ def synth(lang, text, dest):
     last = None
     for attempt in range(4):
         try:
-            if needs_carrier(text): cut_from_carrier(lang, text, body, dest); os.replace(dest + '.part', dest); trim_tail(dest); return True
+            if needs_carrier(text): cut_from_carrier(lang, text, body, dest); os.replace(dest + '.part', dest); post(dest); return True
             data = api(f'/text-to-speech/{voices[lang]}?output_format={args.format}', body, accept='audio/mpeg')
             if len(data) < 500: raise RuntimeError(f'audio demasiado corto ({len(data)} bytes)')
             with open(dest + '.part', 'wb') as f: f.write(data)
-            os.replace(dest + '.part', dest); trim_tail(dest); return True
+            os.replace(dest + '.part', dest); post(dest); return True
         except urllib.error.HTTPError as e:
             msg = e.read().decode(errors='ignore')[:300]
             if e.code == 429: time.sleep(3 * (attempt + 1)); continue
