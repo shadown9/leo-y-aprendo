@@ -76,7 +76,7 @@ README.md           instrucciones para humanos (publicar, instalar, voces)
 | 3 | Palabras | 60 por idioma en 5 categorías, por sílabas | ¿Qué palabra escuchas? · Memoria · ¿Qué rima? · Palmadas · ¿Cuál es distinta? |
 | 4 | Frases | 22 frases, lectura guiada palabra a palabra | — |
 | 5 | Cuentos | 5 cortos (1 pregunta) + 4 largos (9 páginas, 3 preguntas) | — |
-| 6 | Trazar | canvas; mayúscula → minúscula → siguiente letra automático; al final los números 0-9 (sin minúscula) | — |
+| 6 | Trazar | canvas con paleta de 8 colores; el pincel se recorta a la máscara de la letra (NO pinta fuera, como libro de colorear); al levantar el dedo la app comprueba sola (sin botón ✅): celebra y pasa mayúscula → minúscula → siguiente; si falta, anima con voz. Números 0-9 al final | — |
 | 7 | Juegos | menú de los 28 juegos | — |
 | 8 | Números | contar tocando 1-20; con 1 dice "¡Hay una manzana!" (countThings[2] = singular con artículo); `ui.numWord(n)` da el número en palabras hasta 99 (dinero) | ¿Cuántos hay? · Toca el número |
 | 9 | Colores y formas | 10 colores, 8 formas SVG | ¿De qué color? · Busca la forma |
@@ -127,4 +127,4 @@ Detalles pedagógicos que no hay que deshacer: en "¿Cuál es distinta?" el soni
 - En el teléfono: Zona de padres → Diagnóstico → Copiar y pegarlo al chat si algo falla.
 
 ## 10. Feedback ya aplicado de Eli / Junior (no deshacer)
-Piezas mezcladas + pieza extra · estrellas que se ven y se tocan · nombre y sonido de cada letra (Z/C en latino) · trazar auto mayúscula→minúscula→siguiente · voz alegre y más aguda · felicitación completa sin cortes · botón atrás no cierra · cubos grandes · 28 animales y guía hablada al crear perfil · recarga vuelve a la misma pantalla · puertas en color · r suave con punto medio.
+Piezas mezcladas + pieza extra · estrellas que se ven y se tocan · nombre y sonido de cada letra (Z/C en latino) · trazar auto mayúscula→minúscula→siguiente · voz alegre y más aguda · felicitación completa sin cortes · botón atrás no cierra · cubos grandes · 28 animales y guía hablada al crear perfil · recarga vuelve a la misma pantalla · puertas en color · r suave con punto medio · Trazar sin ✅, sin pintar fuera y con paleta (video de la niña de Junior, 2026-10-24).

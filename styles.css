@@ -262,6 +262,10 @@ canvas.trace.good{border-color:var(--good);border-style:solid;box-shadow:0 0 0 6
 .grpbtn small{position:absolute;right:6px;bottom:4px;font-family:var(--display);font-size:1.15rem;font-weight:800;color:#fff;background:rgba(0,0,0,.3);border-radius:99px;padding:1px 9px}
 .sumline{font-family:var(--display);font-weight:700;font-size:clamp(1.5rem,6.5vw,2.1rem);letter-spacing:1px;text-align:center;min-height:1.6em}
 .sumline b{color:var(--a)}
+/* paleta de colores para trazar */
+.palette{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.swatchbtn{width:52px;height:52px;border-radius:50%;border:4px solid var(--card);box-shadow:var(--shadow);cursor:pointer;transition:transform .15s}
+.swatchbtn.on{transform:scale(1.22);border-color:var(--fg)}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
 .confetti i{position:absolute;top:-20px;width:12px;height:12px;border-radius:3px;animation:fall 1.3s linear forwards}

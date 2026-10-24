@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v34';
+const APP_VERSION = 'v35';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -457,30 +457,45 @@ function traceScreen(startLetter) { Diag.crumb('traceScreen');
     ${guideHtml(S().trace)}
     <div class="tracewrap">
       <div class="row"><button class="chip" id="caseU" type="button">${esc(u.upper)}</button><button class="chip" id="caseL" type="button">${esc(u.lower)}</button></div>
+      <div class="palette" id="palette"></div>
       <canvas class="trace" id="cv" width="600" height="600"></canvas>
       <div class="row"><button class="btn alt icon" id="clear" type="button" aria-label="${esc(u.clear)}">🧽</button><button class="btn big icon" id="say" type="button" aria-label="${esc(u.listen)}">🔊</button></div>
       <div class="feedback" id="fb"></div></div>
   </section>`;
   const cv = $('#cv'), ctx = cv.getContext('2d'); const guide = document.createElement('canvas'); guide.width = guide.height = 600; const gctx = guide.getContext('2d');
-  const colors = ['#ff6b6b', '#ffb400', '#2ec4b6', '#5b8def', '#b56fe3']; let strokeColor = colors[0];
+  const colors = ['#ff6b6b', '#ffb400', '#2ec4b6', '#5b8def', '#b56fe3', '#ff7ac8', '#38d9a9', '#ffffff']; let strokeColor = colors[0];
+  // Paleta: el niño elige el color (antes salía al azar). Mezclar colores en la misma letra está permitido.
+  $('#palette').innerHTML = colors.map((c, i) => `<button class="swatchbtn ${i === 0 ? 'on' : ''}" type="button" data-col="${c}" style="background:${c}" aria-label="color"></button>`).join('');
+  $$('#palette .swatchbtn').forEach(b => b.onclick = () => { strokeColor = b.dataset.col; $$('#palette .swatchbtn').forEach(x => x.classList.toggle('on', x === b)); Sfx.tone(600 + colors.indexOf(strokeColor) * 50, 0, .12, 'triangle', .1); });
+  // Máscara de la letra (un poco más ancha que la letra) para que el pincel NO pinte fuera: como un libro de colorear mágico.
+  const mask = document.createElement('canvas'); mask.width = mask.height = 600; const mctx = mask.getContext('2d');
+  const ink = document.createElement('canvas'); ink.width = ink.height = 600; const ictx = ink.getContext('2d');
   function draw() { const ch = upper ? L : L.toLowerCase();
     $$('#lchips .chip').forEach(b => b.classList.toggle('on', b.dataset.l === L)); $('#caseU').classList.toggle('on', upper); $('#caseL').classList.toggle('on', !upper); $('#caseU').hidden = $('#caseL').hidden = isDigit();
     // La guía usa el color del texto del tema (en oscuro, claro): si no, en modo oscuro no se ve por dónde trazar.
     const fg = (getComputedStyle(document.documentElement).getPropertyValue('--fg') || '#2b2340').trim();
     gctx.clearRect(0, 0, 600, 600); gctx.font = '700 420px Fredoka, Nunito, Arial, sans-serif'; gctx.textAlign = 'center'; gctx.textBaseline = 'middle'; gctx.fillStyle = fg; gctx.fillText(ch, 300, 320);
+    mctx.clearRect(0, 0, 600, 600); mctx.font = gctx.font; mctx.textAlign = 'center'; mctx.textBaseline = 'middle'; mctx.fillStyle = '#000'; mctx.strokeStyle = '#000'; mctx.lineWidth = 26; mctx.lineJoin = 'round'; mctx.fillText(ch, 300, 320); mctx.strokeText(ch, 300, 320);
+    ictx.clearRect(0, 0, 600, 600); ictx.lineCap = 'round'; ictx.lineJoin = 'round'; ictx.lineWidth = 34;
     ctx.clearRect(0, 0, 600, 600); ctx.save(); ctx.globalAlpha = .22; ctx.drawImage(guide, 0, 0); ctx.restore();
     // dashed outline so the child sees the path
     ctx.save(); ctx.globalAlpha = .65; ctx.font = gctx.font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 5; ctx.setLineDash([14, 10]); ctx.strokeStyle = fg; ctx.strokeText(ch, 300, 320); ctx.restore();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 34; $('#fb').textContent = ''; }
+  // Pinta en la capa de tinta, la recorta con la máscara de la letra y la compone sobre la guía.
+  function stroke(a, b) { ictx.strokeStyle = strokeColor; ictx.beginPath(); ictx.moveTo(a.x, a.y); ictx.lineTo(b.x, b.y); ictx.stroke();
+    ictx.save(); ictx.globalCompositeOperation = 'destination-in'; ictx.drawImage(mask, 0, 0); ictx.restore();
+    const ch = upper ? L : L.toLowerCase(); const fg = (getComputedStyle(document.documentElement).getPropertyValue('--fg') || '#2b2340').trim();
+    ctx.clearRect(0, 0, 600, 600); ctx.save(); ctx.globalAlpha = .22; ctx.drawImage(guide, 0, 0); ctx.restore();
+    ctx.save(); ctx.globalAlpha = .65; ctx.font = gctx.font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 5; ctx.setLineDash([14, 10]); ctx.strokeStyle = fg; ctx.strokeText(ch, 300, 320); ctx.restore();
+    ctx.drawImage(ink, 0, 0); }
   let drawing = false, last = null; const pt = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * 600 / r.width, y: (e.clientY - r.top) * 600 / r.height }; };
-  cv.onpointerdown = e => { drawing = true; last = pt(e); strokeColor = colors[Math.floor(Math.random() * 5)]; cv.setPointerCapture(e.pointerId); ctx.strokeStyle = strokeColor; ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(last.x + .1, last.y); ctx.stroke(); };
-  cv.onpointermove = e => { if (!drawing) return; const p = pt(e); ctx.strokeStyle = strokeColor; ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke(); last = p; };
+  cv.onpointerdown = e => { drawing = true; last = pt(e); cv.setPointerCapture(e.pointerId); stroke(last, { x: last.x + .1, y: last.y }); };
+  cv.onpointermove = e => { if (!drawing) return; const p = pt(e); stroke(last, p); last = p; };
   let checkTimer = null, nudges = 0, locked = false;
   cv.onpointerup = cv.onpointercancel = () => { drawing = false; clearTimeout(checkTimer); checkTimer = setTimeout(check, 700); };
-  function coverage() { const g = gctx.getImageData(0, 0, 600, 600).data, d = ctx.getImageData(0, 0, 600, 600).data; let tot = 0, hit = 0, outside = 0, inkTotal = 0;
-    for (let i = 3; i < g.length; i += 4 * 3) { const ink = d[i] > 200 && !(d[i - 3] === 0 && d[i - 2] === 0 && d[i - 1] === 0); if (ink) inkTotal++;
-      if (g[i] > 128) { tot++; if (ink) hit++; } else if (ink) outside++; }
-    return { cov: tot ? hit / tot : 0, outside: inkTotal ? outside / inkTotal : 0 }; }
+  function coverage() { const g = gctx.getImageData(0, 0, 600, 600).data, d = ictx.getImageData(0, 0, 600, 600).data; let tot = 0, hit = 0;
+    for (let i = 3; i < g.length; i += 4 * 3) { if (g[i] > 128) { tot++; if (d[i] > 120) hit++; } }
+    return { cov: tot ? hit / tot : 0, outside: 0 }; }
   // Al levantar el dedo la app decide sola (la niña de 5 años de Junior pintó la letra y no supo qué más hacer con el ✅):
   // si la letra está cubierta, celebra y sigue; si falta, anima con voz; nunca "casi".
   function check() { if (locked || !document.contains(cv)) return; const r = coverage();
@@ -489,7 +504,7 @@ function traceScreen(startLetter) { Diag.crumb('traceScreen');
       if (upper && !isDigit()) { Voice.seq([cheer(), 700, { t: letterName(L), rate: .6 }, 500, S().nowLower, 400], () => { upper = false; go(); }); }
       else { const idx = letters.indexOf(L); Voice.seq([cheer(), 700, S().next, 300], () => { L = letters[(idx + 1) % letters.length]; upper = true; go(); const c = $$('#lchips .chip').find(b => b.dataset.l === L); if (c) c.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }); } }
     else if (r.cov > .08) { nudges++; if (nudges <= 2) Voice.seq([S().keepGoing]); else if (nudges === 3) { miss('trace:' + L); Voice.seq([S().traceHelp]); } }
-    else if (r.outside > .8 && r.cov < .05) { Voice.seq([S().traceInside]); } }
+    else { nudges++; if (nudges <= 3) Voice.seq([S().traceInside]); } }
   $('#clear').onclick = () => { Sfx.tap(); nudges = 0; draw(); }; $('#say').onclick = () => Voice.say(letterName(L));
   $('#caseU').onclick = () => { upper = true; draw(); }; $('#caseL').onclick = () => { upper = false; draw(); };
   $$('#lchips .chip').forEach(b => b.onclick = () => { L = b.dataset.l; Sfx.tap(); Voice.seq([{ t: letterName(L), rate: .6 }]); draw(); });
