@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v40';
+const APP_VERSION = 'v41';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -1348,11 +1348,14 @@ function parentsPanel() { Diag.crumb('parentsPanel');
     <div class="card"><h3>${esc(u.profiles)}</h3><div class="row" style="justify-content:flex-start"><button class="btn alt" id="switch" type="button">👥 ${esc(u.profiles)}</button><button class="btn alt" id="reset" type="button">🧹 ${esc(fmt(u.reset, { name: P.name }))}</button><button class="btn" style="background:var(--bad)" id="resetAll" type="button">${esc(u.resetAll)}</button></div>
       <small style="color:var(--muted)">${esc(u.about)}</small></div>
     <div class="card"><h3>🛠 ${esc(u.diagT)}</h3><small style="color:var(--muted)">${esc(u.diagHelp)}</small>
+      <div class="row" style="justify-content:flex-start;align-items:center"><span style="font-family:var(--display);font-size:1.1rem">${APP_VERSION}</span><button class="btn alt" id="updBtn" type="button">🔄 ${esc(u.update)}</button></div>
       <div class="row" style="justify-content:flex-start"><button class="btn alt" id="diagCopy" type="button">📋 ${esc(u.copy)}</button><button class="btn alt" id="diagShow" type="button">👁 ${esc(u.show)}</button><button class="btn alt" id="diagClear" type="button">🧹 ${esc(u.clear)}</button></div>
       <pre id="diagOut" hidden style="white-space:pre-wrap;font-size:.7rem;max-height:40vh;overflow:auto;background:var(--bg);border-radius:12px;padding:10px;user-select:text;-webkit-user-select:text"></pre></div>
   </section>`;
   $('#diagShow').onclick = () => { const o = $('#diagOut'); o.textContent = Diag.report(); o.hidden = !o.hidden; };
   $('#diagClear').onclick = () => { Diag.clear(); $('#diagOut').textContent = ''; toast('🧹'); };
+  $('#updBtn').onclick = () => { Sfx.tap(); toast('🔄 …'); const go = () => { if ('caches' in window) caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('lya-v')).map(k => caches.delete(k)))).finally(() => location.reload(true)); else location.reload(true); };
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(reg => reg ? reg.update().then(go, go) : go()).catch(go); else go(); };
   $('#diagCopy').onclick = () => { const txt = Diag.report(); const fallback = () => { const o = $('#diagOut'); o.textContent = txt; o.hidden = false; const r = document.createRange(); r.selectNodeContents(o); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast(u.copyManual); };
     try { navigator.clipboard.writeText(txt).then(() => toast('📋 ✓'), fallback); } catch (e) { fallback(); } };
   $$('[data-practice]', main).forEach(b => b.onclick = () => practice(b.dataset.practice));
@@ -1407,7 +1410,7 @@ $('#starsBtn').onclick = () => { Voice.stop(); parentsScreen(); };
 /* Botón "atrás" del teléfono: vuelve al inicio en vez de salir de la app. Desde el inicio, no hace nada. */
 let current = 'home';
 const origCrumb = Diag.crumb.bind(Diag);
-Diag.crumb = name => { origCrumb(name); const prev = current; current = name; try { sessionStorage.setItem('lya:last', name); } catch (e) {} if (name !== 'home' && prev === 'home') { try { history.pushState({ lya: 1 }, ''); } catch (e) {} } };
+Diag.crumb = name => { origCrumb(name); const prev = current; current = name; try { sessionStorage.setItem('lya:last', name); } catch (e) {} if (window._pendingReload && name !== prev && !/^game|^reviewGame/.test(name)) { location.reload(); return; } if (name !== 'home' && prev === 'home') { try { history.pushState({ lya: 1 }, ''); } catch (e) {} } };
 try { history.replaceState({ lya: 0 }, ''); } catch (e) {}
 window.addEventListener('popstate', () => { if (current !== 'home' && current !== 'profileScreen' && current !== 'newProfileScreen') { Voice.stop(); home(); } else { try { history.pushState({ lya: 0 }, ''); } catch (e) {} } });
 Diag.log('session', 'inicio ' + APP_VERSION, { lang: settings.lang });
@@ -1424,5 +1427,9 @@ if (P && last && last !== 'home' && last !== 'profileScreen' && last !== 'newPro
 } else if (P) home(); else if (profiles.length) profileScreen(); else newProfileScreen();
 if ('serviceWorker' in navigator && location.protocol !== 'file:') { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(reg => { try { reg.update(); } catch (e) {} }).catch(e => Diag.log('sw', 'registro falló: ' + e.message)));
   // Cuando llega una versión nueva, la app se recarga sola una vez (solo en el inicio, nunca a mitad de un juego).
-  let reloaded = false; navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloaded) return; reloaded = true; Diag.log('sw', 'versión nueva activa'); if (current === 'home' || current === 'profileScreen') location.reload(); else window._pendingReload = true; }); }
+  let reloaded = false; navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloaded) return; reloaded = true; Diag.log('sw', 'versión nueva activa'); if (current === 'home' || current === 'profileScreen') location.reload(); else window._pendingReload = true; });
+  // Tabletas que se quedan con la app abierta días enteros (caso real: la niña del Jefe seguía en v33): buscar la versión nueva al volver a la app y cada 30 min; si hay una pendiente, recargar cuando la app está oculta o en cuanto cambie de pantalla (Diag.crumb).
+  const checkUpdate = () => navigator.serviceWorker.getRegistration().then(reg => { if (reg) reg.update().catch(() => {}); }).catch(() => {});
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { if (window._pendingReload) location.reload(); } else checkUpdate(); });
+  window.addEventListener('online', checkUpdate); setInterval(checkUpdate, 30 * 60 * 1000); window.LYA.update = checkUpdate; }
 })();
