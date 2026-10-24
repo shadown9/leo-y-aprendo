@@ -8,6 +8,8 @@ self.addEventListener('fetch', e => {
   // Fonts (Google) → cache as they arrive, so they also work offline after first load
   if (url.hostname.includes('fonts.g')) { e.respondWith(caches.open('lya-fonts').then(c => c.match(e.request).then(r => r || fetch(e.request).then(res => { c.put(e.request, res.clone()); return res; }).catch(() => r)))); return; }
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  // Letra de las canciones: primero la red (cambia cuando se regraba una canción), la guardada solo sin internet
+  if (url.pathname.includes('/canciones/') && url.pathname.endsWith('.json')) { e.respondWith(caches.open('lya-voces').then(c => fetch(e.request).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; }).catch(() => c.match(e.request)))); return; }
   // Voces grabadas: se guardan la primera vez que suenan (así funcionan sin internet después)
   if ((url.pathname.includes('/voces/') || url.pathname.includes('/sonidos/') || url.pathname.includes('/canciones/')) && /\.(mp3|json)$/.test(url.pathname) && !url.pathname.endsWith('index.json')) { e.respondWith(caches.open('lya-voces').then(c => c.match(e.request).then(r => r || fetch(e.request).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; })))); return; }
   // App shell: cache first, then network; update cache in the background

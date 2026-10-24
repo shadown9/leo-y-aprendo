@@ -43,10 +43,10 @@ def align(lines, words):
         if best[0] >= 0.6: times.append(best[1]); pos = best[2] + 1
         else: times.append(None)
     return times
-def write_lyrics_json(sid, lang, lines, mp3):
+def write_lyrics_json(sid, lang, lines, mp3, sing=None):
     dur = duration(mp3) or (args.length / 1000); times = [None] * len(lines); src = 'uniforme'
     try:
-        times = align(lines, transcribe_words(mp3, lang)); src = f'alineada ({sum(1 for t in times if t is not None)}/{len(lines)} líneas)'
+        times = align(sing or lines, transcribe_words(mp3, lang)); src = f'alineada ({sum(1 for t in times if t is not None)}/{len(lines)} líneas)'
     except Exception as e: print('  alineación falló:', e)
     # huecos: interpolar entre vecinos conocidos (o repartir uniforme si no hay ninguno)
     known = [(i, t) for i, t in enumerate(times) if t is not None]
@@ -64,17 +64,19 @@ for sid, song in songs.items():
         if args.only and sid != args.only: continue
         if args.lang and lang != args.lang: continue
         lyrics = song[lang]['lyrics']; mp3 = os.path.join(OUT, f'{sid}.{lang}.mp3')
-        prompt = STYLE[lang] + '\n' + '\n'.join(lyrics)
+        # "sing": cómo se le escribe al modelo para que lo CANTE bien (p. ej. "a, be, ce" en vez de "A, B, C", que canta en inglés); en pantalla se muestra "lyrics"
+        sing = song[lang].get('sing', lyrics); assert len(sing) == len(lyrics), f'{sid}.{lang}: sing y lyrics deben tener las mismas líneas'
+        prompt = STYLE[lang] + '\n' + '\n'.join(sing)
         if args.show: print(f'=== {sid} ({lang}) ===\n{prompt}\n'); continue
         if args.sync:
-            if os.path.exists(mp3): write_lyrics_json(sid, lang, lyrics, mp3)
+            if os.path.exists(mp3): write_lyrics_json(sid, lang, lyrics, mp3, sing)
             continue
-        if os.path.exists(mp3): print('ya existe', sid, lang); write_lyrics_json(sid, lang, lyrics, mp3); continue
+        if os.path.exists(mp3): print('ya existe', sid, lang); write_lyrics_json(sid, lang, lyrics, mp3, sing); continue
         if not key: sys.exit('Falta ELEVEN_API_KEY')
         body = json.dumps({'prompt': prompt, 'music_length_ms': args.length, 'force_instrumental': False, 'model_id': args.model}).encode()
         req = urllib.request.Request('https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128', data=body, headers={'xi-api-key': key, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg'})
         try:
             with urllib.request.urlopen(req, timeout=300) as r: audio = r.read()
-            open(mp3, 'wb').write(audio); print('ok', sid, lang, len(audio) // 1024, 'KB'); write_lyrics_json(sid, lang, lyrics, mp3)
+            open(mp3, 'wb').write(audio); print('ok', sid, lang, len(audio) // 1024, 'KB'); write_lyrics_json(sid, lang, lyrics, mp3, sing)
         except urllib.error.HTTPError as e: print('ERROR', sid, lang, e.code, e.read().decode(errors='ignore')[:300])
         except Exception as e: print('ERROR', sid, lang, e)
