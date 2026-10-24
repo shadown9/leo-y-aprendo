@@ -73,7 +73,14 @@ for (const L of ['es', 'en']) {
       // lección de la tabla: a grupos de b, suma repetida y conteo de b en b
       add(fmt(a === 1 ? s.multGroups1 : s.multGroups, { a, b })); const plus = L === 'es' ? ' más ' : ' plus '; add(fmt(s.multSum, { sum: Array.from({ length: a }, () => u.numWord(b)).join(plus), c: u.numWord(a * b) })); } });
     for (let k = 21; k <= 100; k++) add(u.numWord(k)); add(s.mult.split('.')[0] + '.');
-    t.fractions.forEach(f => { add(f[0]); add(fmt(s.fracIs, { f: f[0], d: f[4] })); }); }
+    t.fractions.forEach(f => { add(f[0]); add(fmt(s.fracIs, { f: f[0], d: f[4] })); });
+    // Trucos de las tablas (v36): intros, pasos con números en palabras
+    if (s.trick2) { const W = n => u.numWord ? u.numWord(n) : String(n); ['tricksIntro', 'trickPractice', 'trickAgain', 'trick2', 'trick3', 'trick4', 'trick5', 'trick6', 'trick7', 'trick8', 'trick10', 'tapDouble', 'tapOther', 'handsUnits0'].forEach(k => add(s[k]));
+      [2, 3, 4, 5, 6, 7, 8, 9, 10].forEach(n => add(fmt(s.trickOf, { n }))); for (let a = 1; a <= 10; a++) { add(fmt(s.trick9, { a: W(a) })); add(fmt(s.tapFinger, { a: W(a) })); add(fmt(s.tenIs, { a: W(a), c: W(a * 10) })); add(fmt(s.chunkIs1, { a: W(a) }));
+        [1, 2, 4].forEach(x => add(fmt(s.doubleOf, { a: W(a * x), c: W(a * x * 2) }))); [2, 5].forEach(k => add(fmt(s.chunkIs, { k: W(k), a: W(a), c: W(k * a) }))); add(fmt(s.chunkIs, { k: W(1), a: W(a), c: W(a) }));
+        add(fmt(s.chunkAdd, { x: W(2 * a), y: W(a), c: W(3 * a) })); add(fmt(s.chunkAdd, { x: W(5 * a), y: W(a), c: W(6 * a) })); add(fmt(s.chunkAdd, { x: W(5 * a), y: W(2 * a), c: W(7 * a) }));
+        if (a > 1) add(fmt(s.nineIs, { l: W(a - 1), r: W(10 - a), c: W(9 * a) })); else add(fmt(s.nineIs0, { r: W(9) })); }
+      for (let a = 6; a <= 10; a++) for (let b = 6; b <= 10; b++) { add(fmt(s.trickHands, { a, b })); const t = a + b - 10, un = (10 - a) * (10 - b); add(fmt(s.handsTens, { t: W(t), tens: W(t * 10) })); if (un) add(fmt(s.handsUnits, { l: W(10 - a), r: W(10 - b), u: W(un) })); add(fmt(s.handsTotal, { tens: W(t * 10), u: W(un), c: W(a * b) })); } } }
   // Animales del perfil
   Object.values(t.avatarNames || {}).forEach(n => { add(n); add(fmt(s.animalIs, { a: n })); });
   // Saludo sin nombre (el nombre del niño se dice con la voz del teléfono)

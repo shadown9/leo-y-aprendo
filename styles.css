@@ -305,3 +305,35 @@ h1{font-size:1.7rem}
 #numgrid.cubes .tile{min-height:80px;font-size:clamp(2.2rem,9vw,3rem)}
 #abc.cubes .tile{min-height:var(--h,88px);font-size:clamp(2.6rem,11vw,3.4rem)}
 .banner{font-size:1.1rem}
+
+/* ---------- Trucos de las tablas ---------- */
+.tk{width:100%;display:flex;flex-direction:column;align-items:center;gap:12px}
+.tkrow{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
+.tkbig{font-family:var(--display);font-weight:700;font-size:clamp(2.6rem,12vw,4rem);color:var(--fg);line-height:1}
+.tkdots{display:inline-flex;flex-wrap:wrap;gap:5px;max-width:150px;padding:6px 8px;border-radius:12px;background:var(--bg);margin:3px;vertical-align:middle}
+.tkdots i{width:14px;height:14px;border-radius:50%;background:var(--a);display:inline-block}
+.tkdots.new i{background:var(--e);animation:pop .4s ease}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+#tkd{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;max-width:100%}
+.tksteps{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;font-family:var(--display);font-size:1.5rem}.tksteps b{color:var(--a)}
+.tkchunks{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;width:100%}
+.tkchunk{border:0;border-radius:18px;padding:10px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:center;cursor:pointer;min-height:72px;min-width:44%;flex:1;font-family:var(--display);font-size:2rem;color:#2b2340;position:relative}
+.tkchunk.c1{background:var(--i)}.tkchunk.c2{background:var(--e)}.tkchunk b{width:100%;text-align:center;font-size:2.2rem}
+.tkchunk.on{outline:4px solid #22c55e;outline-offset:3px}
+.tkhands{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.tkhand{border:0;background:var(--bg);border-radius:18px;font-size:2.6rem;padding:8px 12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;min-width:72px;min-height:72px;font-family:var(--display);color:var(--fg);transition:transform .15s}
+.tkhand.on{background:#22c55e;color:#fff;transform:scale(1.05)}.tkhand b{font-size:1.4rem;min-height:1.2em}
+.tknine{display:flex;gap:18px;justify-content:center;align-items:flex-end;width:100%}
+.tkpalm{display:flex;gap:5px;align-items:flex-end;position:relative;padding-bottom:50px}
+.tkpalm i{position:absolute;left:0;right:0;bottom:0;height:56px;border-radius:14px 14px 22px 22px;background:#ffcf9f;z-index:0}
+.tkfinger{border:0;width:clamp(26px,7vw,36px);height:clamp(82px,22vw,110px);border-radius:14px 14px 6px 6px;background:#ffd9b0;cursor:pointer;position:relative;z-index:1;font-family:var(--display);font-weight:700;font-size:1.1rem;color:#2b2340;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;transition:transform .3s,opacity .3s}
+.tkfinger.down{transform:translateY(55px) scaleY(.45);opacity:.5;background:#999}
+.tkfinger.tens{background:#22c55e;color:#fff}.tkfinger.units{background:var(--e)}
+.tkl{color:#22c55e}.tkr{color:var(--e)}.tkbig .tkl,.tkbig .tkr{margin:0 4px}
+.tkten{border:0;background:var(--bg);border-radius:22px;padding:10px 26px;cursor:pointer;display:inline-flex;align-items:center}
+.tkten .zero{display:inline-block;width:0;overflow:hidden;color:var(--a);transition:width .5s}.tkten.on .zero{width:.7em}
+.tk610{display:flex;gap:34px;justify-content:center;width:100%}
+.tkcol{display:flex;flex-direction:column;gap:7px}.tkcol.l{align-items:flex-end}.tkcol.r{align-items:flex-start}
+.tkbar{border:0;height:40px;width:clamp(90px,28vw,130px);border-radius:0 20px 20px 0;background:#ffd9b0;cursor:pointer;font-family:var(--display);font-weight:700;font-size:1.3rem;color:#2b2340}
+.tkcol.l .tkbar{border-radius:20px 0 0 20px}
+.tkbar.pick{outline:4px solid var(--fg);outline-offset:2px}.tkbar.tens{background:#22c55e;color:#fff}.tkbar.units{background:var(--e)}

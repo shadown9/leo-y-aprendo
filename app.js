@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v35';
+const APP_VERSION = 'v36';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -1196,11 +1196,14 @@ function gameRead(focus, opts) { Diag.crumb('gameRead'); opts = opts || {};
 function multScreen() { Diag.crumb('multScreen');
   const u = U(), s = S(), L = settings.lang; const t = T();
   main.innerHTML = `<section class="screen">${topbar(u.multT + ' · ' + u.fracT)}${guideHtml(s.mult)}
-    <p class="prompt">✖️ ${esc(u.multT)}</p><div class="grid" id="tables">${[2, 3, 4, 5, 10].map(n => `<button class="tile" type="button" data-n="${n}">×${n}</button>`).join('')}</div>
+    <p class="prompt">✖️ ${esc(u.multT)}</p><div class="grid" id="tables">${[2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<button class="tile" type="button" data-n="${n}">×${n}</button>`).join('')}</div>
     <div class="stage" id="stage" hidden></div>
+    <p class="prompt">✨ ${esc(u.trickT)}</p><div class="grid" id="tricks">${[2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<button class="tile" type="button" data-k="${n}">×${n}</button>`).join('')}<button class="tile keep" type="button" data-k="hands" style="--cube:var(--e);grid-column:1/-1">🖐️🖐️ ${esc(u.trickHands)}</button></div>
+    <div class="stage" id="tstage" hidden></div>
     <p class="prompt">🍕 ${esc(u.fracT)}</p><div class="grid" id="fracs">${t.fractions.map((f, i) => `<button class="tile keep ${has('mult:' + L + ':' + f[1]) ? 'done' : ''}" type="button" data-f="${i}" style="--cube:var(--card)">${fracSvg(f[2], f[3], 70)}<span class="lbl" style="color:var(--fg)">${f[1]}</span></button>`).join('')}</div>
     <div class="row" style="margin-top:8px"><button class="btn" id="goMult" type="button">▶ ${esc(u.games[25][0])}</button><button class="btn alt" id="goFrac" type="button">▶ ${esc(u.games[26][0])}</button></div></section>`;
-  bigOpts(main, '#tables', 3); bigOpts(main, '#fracs', 3); $('#tables').style.setProperty('--h', '84px'); $('#fracs').style.setProperty('--h', '110px');
+  bigOpts(main, '#tables', 3); bigOpts(main, '#fracs', 3); bigOpts(main, '#tricks', 3); $('#tables').style.setProperty('--h', '84px'); $('#tricks').style.setProperty('--h', '84px'); $('#fracs').style.setProperty('--h', '110px');
+  $$('#tricks .tile').forEach(b => b.onclick = () => { Sfx.tap(); trickLesson(b.dataset.k === 'hands' ? 'hands' : +b.dataset.k); });
   $$('#tables .tile').forEach(b => b.onclick = () => { const n = +b.dataset.n; Sfx.tap(); award(1, 'mult:' + L + ':t' + n); const st = $('#stage'); st.hidden = false; const nums = u.numbers;
     st.innerHTML = `<div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(s.multTable, { n }))}</div><div class="tablerows">${Array.from({ length: 10 }, (_, i) => `<button class="trow" type="button" data-a="${i + 1}">${n} × ${i + 1} = <b>${n * (i + 1)}</b><span>${Array.from({ length: i + 1 }, (_, k) => '●' + ((k + 1) % 5 === 0 ? ' ' : '')).join('').trim()}</span></button>`).join('')}</div><div id="mlesson" style="width:100%;display:flex;flex-direction:column;gap:10px;align-items:center"></div>`;
     // Lección de la fila "n × i" con el método de las líneas (japonés): n líneas azules cruzadas por i amarillas; cada cruce es un punto.
@@ -1226,6 +1229,69 @@ function multScreen() { Diag.crumb('multScreen');
     $('#guideText').textContent = s.multPick; Voice.seq([fmt(s.multTable, { n }), 400, s.multLines, 400, s.multPick]); st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
   $$('#fracs .tile').forEach(b => b.onclick = () => { const f = t.fractions[+b.dataset.f]; Sfx.tap(); award(1, 'mult:' + L + ':' + f[1]); b.classList.add('done'); $('#guideText').textContent = fmt(s.fracIs, { f: f[0], d: f[4] }); Voice.seq([fmt(s.fracIs, { f: f[0], d: f[4] })]); });
   $('#goMult').onclick = () => gameMult(); $('#goFrac').onclick = () => gameFrac(); wire(); guideSay(s.mult);
+}
+/* ---------- Trucos de las tablas (los virales de TikTok, explicados simple y con práctica) ----------
+   Cada truco es una vista interactiva: trickView(box, k, a, b, onDone) pinta el truco para k × a (o a × b en "hands"),
+   el niño toca y la voz explica paso a paso; al terminar llama onDone(resultado). La misma vista sirve de andamio en gameTrick.
+   Trucos: 2/4/8 = doblar (1, 2 o 3 veces) · 3 = doble + 1 vez · 6 = 5 veces + 1 · 7 = 5 veces + 2 · 5 = manos de 5 dedos ·
+   9 = bajar el dedo (izquierda decenas, derecha unidades) · 10 = ponerle un cero · hands = dedos 6-10 (tocan+abajo = decenas; arriba × arriba = unidades). */
+function dotsHtml(n, cls) { return `<span class="tkdots ${cls || ''}">${Array.from({ length: n }, () => '<i></i>').join('')}</span>`; }
+function trickIntro(k, a, b) { const s = S(); if (k === 'hands') return fmt(s.trickHands, { a, b }); if (k === 9) return fmt(s.trick9, { a }); return s['trick' + k]; }
+function trickView(box, k, a, b, onDone, onEnd) { const s = S(), u = U(), N = n => u.numWord(n); const say = (parts, then) => { $('#guideText').textContent = typeof parts[0] === 'string' ? parts[0] : $('#guideText').textContent; Voice.seq(parts, then); };
+  const finish = (c, parts) => { confetti(); if (onDone) onDone(c); say(parts, () => { if (onEnd && document.contains(box)) onEnd(c); }); };
+  if (k === 2 || k === 4 || k === 8) { const times = k === 2 ? 1 : k === 4 ? 2 : 3; let cur = a, t = 0;
+    box.innerHTML = `<div class="tkrow"><div class="tkbig" id="tkcur">${a}</div><button class="btn big" id="tkdbl" type="button" style="font-size:1.6rem">×2 ✨</button></div><div id="tkd">${dotsHtml(a)}</div><div class="tksteps" id="tksteps"></div>`;
+    $('#tkdbl').onclick = () => { if (t >= times) return; t++; const prev = cur; cur *= 2; Sfx.tone(500 + t * 80, 0, .15); $('#tkcur').textContent = cur; $('#tkd').innerHTML = dotsHtml(prev) + dotsHtml(prev, 'new'); $('#tksteps').innerHTML += `<span>${prev} + ${prev} = <b>${cur}</b></span>`;
+      if (t < times) say([fmt(s.doubleOf, { a: N(prev), c: N(cur) }), 300, s.tapDouble]); else { $('#tkdbl').disabled = true; finish(cur, [fmt(s.doubleOf, { a: N(prev), c: N(cur) }), 400, fmt(s.multAns, { a: k, b: a, c: cur })]); } };
+    return; }
+  if (k === 3 || k === 6 || k === 7) { const chunks = k === 3 ? [2, 1] : k === 6 ? [5, 1] : [5, 2]; let i = 0, sub = [];
+    box.innerHTML = `<div class="tkchunks">${chunks.map((g, j) => `<button class="tkchunk ${j ? 'c2' : 'c1'}" type="button" data-j="${j}">${Array.from({ length: g }, () => dotsHtml(a)).join('')}<b>?</b></button>`).join('')}</div><div class="sumline" id="tksum">? + ? = <b>?</b></div>`;
+    $$('.tkchunk', box).forEach(ch => ch.onclick = () => { const j = +ch.dataset.j; if (j !== i) return; const g = chunks[j], v = g * a; sub.push(v); ch.classList.add('on'); $('b', ch).textContent = v; i++; Sfx.tone(520 + j * 90, 0, .15);
+      if (i < chunks.length) say([fmt(s.chunkIs, { k: N(g), a: N(a), c: N(v) })]);
+      else { const c = sub[0] + sub[1]; $('#tksum').innerHTML = `${sub[0]} + ${sub[1]} = <b>${c}</b>`; finish(c, [g === 1 ? fmt(s.chunkIs1, { a: N(a) }) : fmt(s.chunkIs, { k: N(g), a: N(a), c: N(v) }), 300, fmt(s.chunkAdd, { x: N(sub[0]), y: N(sub[1]), c: N(c) }), 400, fmt(s.multAns, { a: k, b: a, c })]); } });
+    return; }
+  if (k === 5) { let n = 0; box.innerHTML = `<div class="tkhands">${Array.from({ length: a }, (_, j) => `<button class="tkhand" type="button" data-j="${j}">🖐️<b></b></button>`).join('')}</div><div class="tkbig" id="tkcur">?</div>`;
+    $$('.tkhand', box).forEach(h => h.onclick = () => { if (h.classList.contains('on')) return; h.classList.add('on'); n++; const v = n * 5; $('b', h).textContent = v; $('#tkcur').textContent = v; Sfx.tone(440 + n * 40, 0, .15);
+      if (n < a) say([{ t: N(v), rate: .9 }]); else finish(v, [{ t: N(v), rate: .9 }, 400, fmt(s.multAns, { a: 5, b: a, c: v })]); });
+    return; }
+  if (k === 9) { const c = 9 * a, l = a - 1, r = 10 - a;
+    box.innerHTML = `<div class="tknine">${[0, 1].map(h => `<div class="tkpalm ${h ? 'r' : 'l'}">${Array.from({ length: 5 }, (_, j) => { const f = h * 5 + j + 1; return `<button class="tkfinger" type="button" data-f="${f}"><span>${f}</span></button>`; }).join('')}<i></i></div>`).join('')}</div><div class="tkbig" id="tkcur"><span class="tkl">?</span><span class="tkr">?</span></div>`;
+    $$('.tkfinger', box).forEach(f => f.onclick = () => { const n = +f.dataset.f; if (n !== a) { Sfx.bad(); say([fmt(s.tapFinger, { a: N(a) })]); return; } Sfx.good(); f.classList.add('down'); $$('.tkfinger', box).forEach(x => { const m = +x.dataset.f; if (m < a) x.classList.add('tens'); if (m > a) x.classList.add('units'); x.disabled = true; });
+      $('#tkcur').innerHTML = `<span class="tkl">${l || ''}</span><span class="tkr">${r}</span>`; finish(c, [l ? fmt(s.nineIs, { l: N(l), r: N(r), c: N(c) }) : fmt(s.nineIs0, { r: N(r) }), 400, fmt(s.multAns, { a: 9, b: a, c })]); });
+    return; }
+  if (k === 10) { const c = a * 10; box.innerHTML = `<button class="tkbig tkten" id="tkten" type="button">${a}<span class="zero">0</span></button>`;
+    $('#tkten').onclick = () => { const bt = $('#tkten'); if (bt.classList.contains('on')) return; bt.classList.add('on'); Sfx.good(); finish(c, [fmt(s.tenIs, { a: N(a), c: N(c) }), 400, fmt(s.multAns, { a: 10, b: a, c })]); };
+    return; }
+  if (k === 'hands') { const pick = [null, null]; const c = a * b;
+    box.innerHTML = `<div class="tk610">${[0, 1].map(h => `<div class="tkcol ${h ? 'r' : 'l'}">${[10, 9, 8, 7, 6].map(f => `<button class="tkbar" type="button" data-h="${h}" data-f="${f}"><span>${f}</span></button>`).join('')}</div>`).join('')}</div><div class="sumline" id="tksum"><span class="tkl">?</span> + <span class="tkr">?</span> = <b>?</b></div>`;
+    say([fmt(s.trickHands, { a, b })]);
+    $$('.tkbar', box).forEach(bar => bar.onclick = () => { const h = +bar.dataset.h, f = +bar.dataset.f; if (pick[h] != null) return; const want = h === 0 ? a : b; if (f !== want) { Sfx.bad(); return; } pick[h] = f; bar.classList.add('pick'); Sfx.tone(h ? 620 : 520, 0, .15);
+      if (pick[0] == null || pick[1] == null) { say([s.tapOther]); return; }
+      $$('.tkbar', box).forEach(x => { const hh = +x.dataset.h, ff = +x.dataset.f; if (ff <= pick[hh]) x.classList.add('tens'); else x.classList.add('units'); x.disabled = true; });
+      const t = (a - 5) + (b - 5), tens = t * 10, lu = 10 - a, ru = 10 - b, un = lu * ru; $('#tksum').innerHTML = `<span class="tkl">${tens}</span> + <span class="tkr">${un}</span> = <b>${c}</b>`;
+      finish(c, [fmt(s.handsTens, { t: N(t), tens: N(tens) }), 400, un ? fmt(s.handsUnits, { l: N(lu), r: N(ru), u: N(un) }) : s.handsUnits0, 400, fmt(s.handsTotal, { tens: N(tens), u: N(un), c: N(c) }), 400, fmt(s.multAns, { a, b, c })]); });
+    return; }
+}
+function trickPick(k) { if (k === 'hands') { const a = 6 + Math.floor(Math.random() * 5), b = 6 + Math.floor(Math.random() * 5); return [a, b]; } return [2 + Math.floor(Math.random() * 8), k]; }
+function trickLesson(k) { Diag.crumb('trickLesson:' + k); const u = U(), s = S(), L = settings.lang; const st = $('#tstage'); if (!st) return; st.hidden = false; award(1, 'mult:' + L + ':trick' + k);
+  const show = () => { const [a, b] = trickPick(k); const title = k === 'hands' ? u.trickHands : fmt(s.trickOf, { n: k }); const q = k === 'hands' ? `${a} × ${b}` : `${k} × ${a}`;
+    st.innerHTML = `<div class="word" style="font-size:1.4rem;letter-spacing:0">✨ ${esc(title)}</div><div class="word" style="font-size:2.2rem;letter-spacing:3px">${q} = <b id="tkres">?</b></div><div class="tk" id="tkbox"></div><div class="row" style="margin-top:8px"><button class="btn big icon" id="tkre" type="button" title="otro">🔄</button><button class="btn big" id="tkgo" type="button">▶ ${esc(u.games[25][0])}</button></div>`;
+    $('#tkre').onclick = () => { Sfx.tap(); show(); }; $('#tkgo').onclick = () => gameTrick(k);
+    trickView($('#tkbox'), k, a, b, c => { $('#tkres').textContent = c; }, () => { $('#tkre').classList.add('pulse'); $('#guideText').textContent = s.trickAgain; Voice.seq([s.trickAgain]); });
+    const intro = trickIntro(k, a, b); $('#guideText').textContent = intro; if (k !== 'hands') Voice.seq([intro]); st.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  show();
+}
+/* Práctica del truco: 4 rondas; el truco está en pantalla como andamio (el niño puede tocarlo o responder directo). Misma estadística que Multiplicar. */
+function gameTrick(k, opts) { Diag.crumb('gameTrick:' + k); opts = opts || {}; const u = U(), s = S(); const sh = gameShell(k === 'hands' ? u.trickHands : fmt(s.trickOf, { n: k }), opts, 4); let r = 0, won = 0;
+  function round() { if (r === sh.n) { done(sh, won, () => gameTrick(k), opts); return; }
+    sh.bar.style.width = (r / sh.n * 100) + '%'; const [a, b] = trickPick(k); const c = a * b; let tries = 0; const key = 'mult:' + Math.min(a, b) + 'x' + Math.max(a, b); firstSeen(key);
+    const cands = new Set(); while (cands.size < 2) { const alt = c + [-b, b, -a, a, -10, 10][Math.floor(Math.random() * 6)]; if (alt > 0 && alt !== c) cands.add(alt); } const optsM = shuffle([c].concat([...cands]));
+    sh.area.innerHTML = `<div class="stage"><div class="word" style="font-size:2.2rem;letter-spacing:4px">${k === 'hands' ? a + ' × ' + b : k + ' × ' + a} = <span style="color:var(--a)">?</span></div><div class="tk" id="tkbox"></div><button class="btn big icon" id="hear" type="button">🔊</button></div>
+      <div class="grid">${optsM.map(v => `<button class="tile" type="button" data-v="${v}">${v}</button>`).join('')}</div>`;
+    bigOpts(sh.area); trickView($('#tkbox'), k, a, b, null);
+    const q = fmt(s.multQ, { a: k === 'hands' ? a : k, b: k === 'hands' ? b : a }); const hear = () => Voice.seq([q]); $('#hear').onclick = hear; askOnce(opts, r, s.trickPractice + ' ' + q, hear);
+    $$('[data-v]', sh.area).forEach(btn => btn.onclick = () => { if (+btn.dataset.v === c) { if (tries === 0) hit(key); adapt('mult', tries === 0); correct(sh, btn, tries === 0 ? 1 : 0, () => { r++; round(); }, [fmt(s.multAns, { a: k === 'hands' ? a : k, b: k === 'hands' ? b : a, c }), 300]); if (tries === 0) won++; } else { tries++; miss(key); if (tries === 1) adapt('mult', false); wrong(sh, btn, hear, tries, `[data-v="${c}"]`); } }); }
+  $('#guideText').textContent = s.trickPractice; round();
 }
 function fracSvg(parts, filled, size) { const r = 50, cx = 60, cy = 60; let d = ''; for (let i = 0; i < parts; i++) { const a0 = (i / parts) * 2 * Math.PI - Math.PI / 2, a1 = ((i + 1) / parts) * 2 * Math.PI - Math.PI / 2; const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0), x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1); d += `<path d="M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${parts === 2 ? 1 : 0},1 ${x1.toFixed(1)},${y1.toFixed(1)} Z" fill="${i < filled ? 'var(--a)' : 'var(--bg)'}" stroke="var(--fg)" stroke-width="3"/>`; } return `<svg viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true">${d}</svg>`; }
 function gameMult(focus, opts) { Diag.crumb('gameMult'); opts = opts || {};
