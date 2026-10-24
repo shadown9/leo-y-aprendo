@@ -3,3 +3,6 @@ tools/.eleven_key
 # Descargas a medias
 *.part
 .DS_Store
+# Informes de verificación de voces (se regeneran)
+voces/dudosos_*.json
+voces/_partes_*/
