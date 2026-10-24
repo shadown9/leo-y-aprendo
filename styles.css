@@ -255,6 +255,12 @@ canvas.trace{max-width:min(92vw,520px)}
 .trow{border:0;background:var(--bg);border-radius:12px;padding:8px 12px;font-family:var(--display);font-size:1.3rem;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;text-align:left}
 .trow span{font-size:1rem;color:var(--o);letter-spacing:1px;white-space:nowrap}.trow.hl{background:var(--e);color:#2b2340}
 .groups{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.grp{background:var(--bg);border-radius:12px;padding:6px 8px;font-size:1.4rem;letter-spacing:2px}
+/* lección de tablas: grupos tocables que se cuentan de n en n */
+.grpbtn{border:0;background:var(--bg);border-radius:18px;padding:10px 12px;font-size:1.5rem;letter-spacing:2px;line-height:1.25;position:relative;cursor:pointer;box-shadow:var(--shadow);max-width:46%;word-break:break-all;transition:transform .15s}
+.grpbtn.on{background:var(--good);transform:scale(1.04)}
+.grpbtn small{position:absolute;right:6px;bottom:4px;font-family:var(--display);font-size:1.15rem;font-weight:800;color:#fff;background:rgba(0,0,0,.3);border-radius:99px;padding:1px 9px}
+.sumline{font-family:var(--display);font-weight:700;font-size:clamp(1.5rem,6.5vw,2.1rem);letter-spacing:1px;text-align:center;min-height:1.6em}
+.sumline b{color:var(--a)}
 /* confetti */
 .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
 .confetti i{position:absolute;top:-20px;width:12px;height:12px;border-radius:3px;animation:fall 1.3s linear forwards}
@@ -285,7 +291,7 @@ h1{font-size:1.7rem}
 .gatecard{font-size:1.7rem}.gatecard b{font-size:2.4rem}
 .lyrics{max-height:46vh}.lyrics .line{font-size:clamp(1.5rem,6.5vw,1.9rem);padding:8px 12px}
 .reading{font-size:clamp(1.45rem,6vw,1.8rem);line-height:1.6}
-.trow{font-size:1.55rem;padding:10px 14px}.trow span{font-size:1.25rem}
+.trow{font-size:1.55rem;padding:10px 14px;white-space:nowrap}.trow span{font-size:1.25rem;white-space:normal;max-width:46%;text-align:right;line-height:1.1}
 .grp{font-size:1.9rem;padding:8px 10px}
 .countrow .cnt{width:76px;height:76px;font-size:2.7rem;border-radius:18px}.countrow .cnt small{font-size:1.05rem}
 .countrow.big span{font-size:clamp(2.6rem,11vw,3.4rem)}

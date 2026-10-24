@@ -69,7 +69,10 @@ for (const L of ['es', 'en']) {
     t.bodyParts.forEach(bp => { add(bp[0]); add(fmt(s.bodyPart, { p: bp[0], d: bp[2] })); add(fmt(s.tapPart, { p: bp[0] })); });
     t.weatherKinds.forEach(w => { add(w[0]); add(fmt(s.weatherIs, { w: w[0], d: w[2] })); add(fmt(s.gWeather, { w: w[0] })); add(fmt(s.wearIt, { w: w[0], c: w[3] })); }); t.wearOptions.forEach(o => add(o[0]));
     t.readings.forEach((rd, i) => { add(rd.title); add(rd.text); rd.text.split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); rd.qs.forEach(q => { add(q[0]); q[1].forEach(add); }); }); for (let n = 1; n <= 4; n++) add(fmt(s.readQ, { n }));
-    [2, 3, 4, 5, 6, 7, 8, 9, 10].forEach(b => { add(fmt(s.multTable, { n: b })); for (let a = 1; a <= 10; a++) { add(fmt(a === 1 ? s.multQ1 : s.multQ, { a, b })); add(fmt(s.multAns, { a, b, c: a * b })); } }); add(s.mult.split('.')[0] + '.');
+    [2, 3, 4, 5, 6, 7, 8, 9, 10].forEach(b => { add(fmt(s.multTable, { n: b })); for (let a = 1; a <= 10; a++) { add(fmt(a === 1 ? s.multQ1 : s.multQ, { a, b })); add(fmt(s.multAns, { a, b, c: a * b })); add(fmt(s.multAns, { a: b, b: a, c: a * b }));
+      // lección de la tabla: a grupos de b, suma repetida y conteo de b en b
+      add(fmt(a === 1 ? s.multGroups1 : s.multGroups, { a, b })); const plus = L === 'es' ? ' más ' : ' plus '; add(fmt(s.multSum, { sum: Array.from({ length: a }, () => u.numWord(b)).join(plus), c: u.numWord(a * b) })); } });
+    for (let k = 21; k <= 100; k++) add(u.numWord(k)); add(s.mult.split('.')[0] + '.');
     t.fractions.forEach(f => { add(f[0]); add(fmt(s.fracIs, { f: f[0], d: f[4] })); }); }
   // Animales del perfil
   Object.values(t.avatarNames || {}).forEach(n => { add(n); add(fmt(s.animalIs, { a: n })); });

@@ -89,7 +89,7 @@ README.md           instrucciones para humanos (publicar, instalar, voces)
 | 16 | Escribir | tocar letras en orden con distractores | Escribe la palabra |
 | 17 | Mi cuerpo y el clima | 10 partes, 6 climas con ropa | ¿Qué parte es? · ¿Qué me pongo? |
 | 18 | Leer y entender (8+) | 5 textos, 4 preguntas | Preguntas del texto |
-| 19 | Multiplicar y fracciones | tablas 2-10 con puntitos, fracciones tipo pizza | Multiplicar · ¿Qué fracción es? |
+| 19 | Multiplicar y fracciones | tablas ×2 ×3 ×4 ×5 ×10; al tocar una fila (n × i) se abre la lección con el **método de las líneas (japonés)**, el que el Jefe vio viral: n líneas azules cruzadas por i amarillas, cada cruce es un punto; el niño toca cada línea amarilla, se encienden sus n cruces y la voz cuenta de n en n; luego la suma repetida (3 + 3 + 3 + 3 = 12) y el resultado. Antes solo recitaba "3 por 4 es 12" (crítica del Jefe, v33). Fracciones tipo pizza | Multiplicar · ¿Qué fracción es? |
 Índices de `u.games`: 0-5 clásicos, 6 rima, 7 palmadas, 8 distinta, 9 cuántos, 10 toca número, 11 color, 12 forma, 13 sumar, 14 restar, 15 siente, 16 hora, 17 día, 18 animal, 19 vive, 20 dinero, 21 escribir, 22 cuerpo, 23 ropa, 24 lectura, 25 multiplicar, 26 fracción, 27 sílaba.
 Detalles pedagógicos que no hay que deshacer: en "¿Cuál es distinta?" el sonido inicial es el dígrafo completo (ch, ll, sh, th, qu, rr); en "¿Con qué letra empieza?" solo entran letras cuya palabra de verdad empieza con ellas (en inglés "x de fox" queda fuera).
 

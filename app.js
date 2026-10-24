@@ -1182,9 +1182,28 @@ function multScreen() { Diag.crumb('multScreen');
     <div class="row" style="margin-top:8px"><button class="btn" id="goMult" type="button">▶ ${esc(u.games[25][0])}</button><button class="btn alt" id="goFrac" type="button">▶ ${esc(u.games[26][0])}</button></div></section>`;
   bigOpts(main, '#tables', 3); bigOpts(main, '#fracs', 3); $('#tables').style.setProperty('--h', '84px'); $('#fracs').style.setProperty('--h', '110px');
   $$('#tables .tile').forEach(b => b.onclick = () => { const n = +b.dataset.n; Sfx.tap(); award(1, 'mult:' + L + ':t' + n); const st = $('#stage'); st.hidden = false; const nums = u.numbers;
-    st.innerHTML = `<div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(s.multTable, { n }))}</div><div class="tablerows">${Array.from({ length: 10 }, (_, i) => `<button class="trow" type="button" data-a="${i + 1}">${n} × ${i + 1} = <b>${n * (i + 1)}</b><span>${Array.from({ length: i + 1 }, (_, k) => '●' + ((k + 1) % 5 === 0 ? ' ' : '')).join('').trim()}</span></button>`).join('')}</div>`;
-    $$('.trow', st).forEach(x => x.onclick = () => { const a = +x.dataset.a; $$('.trow', st).forEach(y => y.classList.toggle('hl', y === x)); Voice.seq([fmt(s.multAns, { a: n, b: a, c: n * a })]); });
-    Voice.seq([fmt(s.multTable, { n }), 400, s.mult.split('.')[0] + '.']); st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+    st.innerHTML = `<div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(fmt(s.multTable, { n }))}</div><div class="tablerows">${Array.from({ length: 10 }, (_, i) => `<button class="trow" type="button" data-a="${i + 1}">${n} × ${i + 1} = <b>${n * (i + 1)}</b><span>${Array.from({ length: i + 1 }, (_, k) => '●' + ((k + 1) % 5 === 0 ? ' ' : '')).join('').trim()}</span></button>`).join('')}</div><div id="mlesson" style="width:100%;display:flex;flex-direction:column;gap:10px;align-items:center"></div>`;
+    // Lección de la fila "n × i" con el método de las líneas (japonés): n líneas azules cruzadas por i amarillas; cada cruce es un punto.
+    // El niño toca cada línea amarilla, se encienden sus n cruces y se cuenta de n en n; luego la suma repetida y el resultado.
+    const plus = L === 'es' ? ' más ' : ' plus ';
+    const lesson = i => { $$('.trow', st).forEach(y => y.classList.toggle('hl', +y.dataset.a === i)); let k = 0; const box = $('#mlesson'); const intro = fmt(i === 1 ? s.multGroups1 : s.multGroups, { a: i, b: n });
+      const W = 40 + i * 34, H = 44 + n * 30, xs = g => 20 + g * 34, ys = j => 20 + j * 30;
+      box.innerHTML = `<div class="sub" style="font-size:1.3rem">${esc(intro)}</div>
+        <svg class="mlines" viewBox="0 0 ${W} ${H}" width="${Math.min(W, 380)}" style="max-width:100%;height:auto" aria-label="${n} × ${i}">
+          ${Array.from({ length: n }, (_, j) => `<line x1="4" y1="${ys(j)}" x2="${W - 4}" y2="${ys(j)}" stroke="var(--o)" stroke-width="5" stroke-linecap="round"/>`).join('')}
+          ${Array.from({ length: i }, (_, g) => `<g class="vline" data-g="${g}" style="cursor:pointer"><rect x="${xs(g) - 17}" y="0" width="34" height="${H}" fill="transparent"/><line x1="${xs(g)}" y1="4" x2="${xs(g)}" y2="${H - 22}" stroke="var(--e)" stroke-width="5" stroke-linecap="round"/>
+            ${Array.from({ length: n }, (_, j) => `<circle cx="${xs(g)}" cy="${ys(j)}" r="7" fill="var(--card)" stroke="var(--fg)" stroke-width="2"/>`).join('')}<text x="${xs(g)}" y="${H - 4}" text-anchor="middle" font-family="Fredoka,Nunito,sans-serif" font-weight="700" font-size="15" fill="var(--fg)"></text></g>`).join('')}
+        </svg>
+        <div class="sumline" id="msum">${Array.from({ length: i }, () => n).join(' + ')} = <b>?</b></div><div class="word" style="font-size:2.2rem;letter-spacing:3px">${n} × ${i} = <b id="mres">?</b></div>`;
+      $('#guideText').textContent = intro; Voice.seq([intro]);
+      $$('.vline', box).forEach(g => g.onclick = () => { if (g.classList.contains('on')) return; g.classList.add('on'); k++; const v = n * k; $$('circle', g).forEach(c => { c.setAttribute('fill', '#22c55e'); c.setAttribute('stroke', '#fff'); c.setAttribute('r', '9'); }); $('line', g).setAttribute('stroke-width', '8'); $('text', g).textContent = v; Sfx.tone(440 + k * 40, 0, .15);
+        if (k < i) Voice.seq([{ t: u.numWord(v), rate: .9 }]);
+        else { $('#msum').innerHTML = `${Array.from({ length: i }, () => n).join(' + ')} = <b>${v}</b>`; $('#mres').textContent = v; confetti(); award(1, 'mult:' + L + ':' + n + 'x' + i);
+          const sum = fmt(s.multSum, { sum: Array.from({ length: i }, () => u.numWord(n)).join(plus), c: u.numWord(v) }); $('#guideText').textContent = sum;
+          Voice.seq([{ t: u.numWord(v), rate: .9 }, 400, sum, 400, fmt(s.multAns, { a: n, b: i, c: v }), 300, cheer()]); } });
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
+    $$('.trow', st).forEach(x => x.onclick = () => { Sfx.tap(); lesson(+x.dataset.a); });
+    $('#guideText').textContent = s.multPick; Voice.seq([fmt(s.multTable, { n }), 400, s.multLines, 400, s.multPick]); st.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
   $$('#fracs .tile').forEach(b => b.onclick = () => { const f = t.fractions[+b.dataset.f]; Sfx.tap(); award(1, 'mult:' + L + ':' + f[1]); b.classList.add('done'); $('#guideText').textContent = fmt(s.fracIs, { f: f[0], d: f[4] }); Voice.seq([fmt(s.fracIs, { f: f[0], d: f[4] })]); });
   $('#goMult').onclick = () => gameMult(); $('#goFrac').onclick = () => gameFrac(); wire(); guideSay(s.mult);
 }
@@ -1225,7 +1244,7 @@ function parentsScreen() { Diag.crumb('parentsScreen');
 }
 function parentsPanel() { Diag.crumb('parentsPanel');
   const t = T(), u = U(); const L = settings.lang; const lv = u.levels;
-  const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, t.letters.length + 5 + 10, 10, 20, t.colors.length + t.shapes.length, 20, t.emotions.length, 12 + 7 + 12, t.animals.length + t.plant.length + 1 + t.planets.length, t.songs.length, t.coins.length, t.writeWords.length, t.bodyParts.length + t.weatherKinds.length, t.readings.length, 5 + t.fractions.length];
+  const totals = [5, t.letters.length + 5, t.cons.length * 5, t.wordCats.reduce((s, c) => s + c[2].length, 0), t.phrases.length, t.stories.length, t.letters.length + 5 + 10, 10, 20, t.colors.length + t.shapes.length, 20, t.emotions.length, 12 + 7 + 12, t.animals.length + t.plant.length + 1 + t.planets.length, t.songs.length, t.coins.length, t.writeWords.length, t.bodyParts.length + t.weatherKinds.length, t.readings.length, 5 + 50 + t.fractions.length];
   const vs = Voice.voices.filter(v => (v.lang || '').toLowerCase().startsWith(T().code));
   main.innerHTML = `<section class="screen">${topbar(u.parentsT)}
     <div class="card"><h3>${esc(u.progress)} · ${P.avatar} ${esc(P.name)} · ⭐ ${P.stars}</h3>
