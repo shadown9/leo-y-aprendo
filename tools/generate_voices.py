@@ -21,7 +21,7 @@ API = 'https://api.elevenlabs.io/v1'
 ap = argparse.ArgumentParser()
 ap.add_argument('--voice-es', help='ID o nombre de la voz en español (p. ej. Daniela)'); ap.add_argument('--voice-en', help='ID o nombre de la voz en inglés')
 ap.add_argument('--only', choices=['es', 'en']); ap.add_argument('--dry-run', action='store_true'); ap.add_argument('--limit', type=int, help='generar solo N frases (para escuchar antes de gastar)')
-ap.add_argument('--model', default='eleven_multilingual_v2')
+ap.add_argument('--model', default='eleven_turbo_v2_5')  # permite forzar el idioma (language_code); multilingual_v2 leía "E" o "gallina" en inglés/italiano
 ap.add_argument('--stability', type=float, default=0.45)      # más bajo = más expresivo
 ap.add_argument('--similarity', type=float, default=0.8)
 ap.add_argument('--style', type=float, default=0.35)          # exageración de estilo (alegría)
@@ -69,13 +69,37 @@ langs = [args.only] if args.only else ['es', 'en']
 voices = {'es': args.voice_es, 'en': args.voice_en}
 send_lang = bool(re.search(r'v2_5|turbo|flash', args.model))  # language_code solo lo soportan los modelos v2.5; multilingual_v2 lo ignora
 
+PRON = {}
+try: PRON = json.load(open(os.path.join(ROOT, 'tools', 'pronunciacion.json'), encoding='utf-8'))  # {"es": {"gallina": "gaína"}}: cómo se ESCRIBE para que se PRONUNCIE bien; el archivo sigue llamándose por el texto original
+except Exception: pass
+def spoken(lang, text):
+    for k, v in (PRON.get(lang) or {}).items(): text = re.sub(r'(?<!\w)' + re.escape(k) + r'(?!\w)', v, text, flags=re.I)
+    return text
+CARRIER = {'es': 'Escucha: {x}.', 'en': 'Listen: {x}.'}
+def needs_carrier(text):
+    """Letras, sílabas, números y palabras cortas sueltas: solas, el modelo las lee en otro idioma ("E" → "i", "oso" → "awesome").
+    Se generan dentro de una frase y se recorta el trozo con los tiempos por carácter que devuelve la API."""
+    t = text.strip(); return (' ' not in t and len(t) <= 5) or t in ('doble u',)
+def cut_from_carrier(lang, text, body, dest):
+    import base64, subprocess
+    target = body['text']; carrier = CARRIER[lang].replace('{x}', target); if re.search(r'[.!?]$', target): carrier = carrier.rstrip('.')  # "¡Oso!" ya trae su signo
+    body = dict(body, text=carrier)
+    j = json.loads(api(f'/text-to-speech/{voices[lang]}/with-timestamps?output_format={args.format}', body))
+    al = j.get('alignment') or j.get('normalized_alignment'); s = ''.join(al['characters']); i = s.rfind(target)
+    if i < 0: raise RuntimeError(f'no encuentro "{target}" en la alineación "{s}"')
+    t0 = max(0, al['character_start_times_seconds'][i] - 0.04); t1 = al['character_end_times_seconds'][i + len(target) - 1] + 0.08
+    if t1 - t0 < 0.12: raise RuntimeError(f'corte demasiado corto ({t1 - t0:.2f} s) para "{target}"')
+    with open(dest + '.full', 'wb') as f: f.write(base64.b64decode(j['audio_base64']))
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', dest + '.full', '-ss', f'{t0:.3f}', '-to', f'{t1:.3f}', '-c:a', 'libmp3lame', '-b:a', '32k', '-ar', '22050', dest + '.part'], check=True)
+    os.remove(dest + '.full')
 def synth(lang, text, dest):
-    body = {'text': text, 'model_id': args.model,
+    body = {'text': spoken(lang, text), 'model_id': args.model,
             'voice_settings': {'stability': args.stability, 'similarity_boost': args.similarity, 'style': args.style, 'use_speaker_boost': True, 'speed': args.speed}}
     if send_lang: body['language_code'] = lang
     last = None
     for attempt in range(4):
         try:
+            if needs_carrier(text): cut_from_carrier(lang, text, body, dest); os.replace(dest + '.part', dest); return True
             data = api(f'/text-to-speech/{voices[lang]}?output_format={args.format}', body, accept='audio/mpeg')
             if len(data) < 500: raise RuntimeError(f'audio demasiado corto ({len(data)} bytes)')
             with open(dest + '.part', 'wb') as f: f.write(data)

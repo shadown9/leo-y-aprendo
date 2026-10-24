@@ -17,7 +17,7 @@ for (const L of ['es', 'en']) {
   for (let n = 0; n <= 14; n++) add(fmt(u.done, { n }));
   add('0'); // trazar el cero
   // Vocales
-  t.vowels.forEach(v => { add(v[0]); add(v[0].toLowerCase()); add(v[1]); add(fmt(s.thisIs, { L: v[0] })); add(fmt(s.ofWord, { L: v[0], w: v[1] })); add(fmt(s.tapIt, { L: v[0] })); });
+  t.vowels.forEach(v => { add(v[0]); add(v[0].toLowerCase()); add(v[1]); add(fmt(s.thisIs, { L: v[0] })); add(fmt(s.ofWord, { L: v[0], w: v[1] })); add(fmt(s.tapIt, { L: v[0] })); add(fmt(s.letterIs, { name: v[0] })); });
   // Letras: nombre, sonido, "esta es la letra", "X de palabra"
   t.letters.forEach(l => { add(l[0]); add(l[0].toUpperCase()); add(l[1]); add(l[3]); add(fmt(s.letterIs, { name: l[3] })); add(fmt(s.ofWord, { L: l[3], w: l[1] })); const snd = (t.sounds || {})[l[0]]; add(snd); if (snd) add(snd.split(',')[0]); });
   Object.values(t.sounds || {}).forEach(x => { add(x); if (x) add(x.split(',')[0].trim()); });
@@ -33,7 +33,8 @@ for (const L of ['es', 'en']) {
   t.rhymes.forEach(set2 => set2.forEach(w => { add(w[0]); add(fmt(s.rhymeQ, { w: w[0] })); }));
   t.claps.forEach(c => { add(c[0]); addSyl(c[3]); });
   // "¿Cuál empieza diferente?" frases dinámicas
-  t.wordCats.flatMap(c => c[2]).forEach(w => add(fmt(s.startsDiff, { w: w[0], L: w[0][0] })));
+  const onset = w => (w.match(/^(ch|ll|sh|th|qu|rr)/) || [w[0]])[0]; // igual que gameOdd
+  t.wordCats.flatMap(c => c[2]).forEach(w => add(fmt(s.startsDiff, { w: w[0], L: onset(w[0]) })));
   // Frases y cuentos: la frase entera y cada palabra
   t.phrases.forEach(p => { add(p[0]); p[0].split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); });
   t.stories.forEach(st => { add(st.title); st.pages.forEach(pg => { add(pg[0]); pg[0].split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); }); (st.qs || [st.q]).forEach(q => { add(q[0]); q[1].forEach(o => add(o[0])); }); });
@@ -64,7 +65,7 @@ for (const L of ['es', 'en']) {
     [1, 2, 3, 4, 5, 10, 15, 20, 25, 50, 75, 100, 200, 300, 400, 500].forEach(x => add(money(x))); // contar monedas de una en una, de 5 en 5, de 25 en 25
     (t.countThings || []).forEach(th => { if (th[2]) add(fmt(s.allCounted1, { one: th[2] })); });
     try { const songs = require(path.join(__dirname, 'songs.json')); Object.values(songs).forEach(sg => (sg[L] && sg[L].lyrics || []).forEach(add)); } catch (e) {} // letras: la voz las canta mientras no haya mp3
-    t.writeWords.forEach(w => { add(w[0]); add(fmt(s.wroteIt, { w: w[0] })); addSyl(t.syllabify[w[0]] || ''); }); 'abcdefghijklmnñopqrstuvwxyz'.split('').forEach(l => add(fmt(s.nextLetter, { l })));
+    t.writeWords.forEach(w => { add(w[0]); add(fmt(s.wroteIt, { w: w[0] })); addSyl(t.syllabify[w[0]] || ''); }); 'abcdefghijklmnñopqrstuvwxyz'.split('').forEach(l => { const nm = (t.letters.find(x => x[0] === l) || [])[3] || l; add(fmt(s.nextLetter, { l: nm })); });
     t.bodyParts.forEach(bp => { add(bp[0]); add(fmt(s.bodyPart, { p: bp[0], d: bp[2] })); add(fmt(s.tapPart, { p: bp[0] })); });
     t.weatherKinds.forEach(w => { add(w[0]); add(fmt(s.weatherIs, { w: w[0], d: w[2] })); add(fmt(s.gWeather, { w: w[0] })); add(fmt(s.wearIt, { w: w[0], c: w[3] })); }); t.wearOptions.forEach(o => add(o[0]));
     t.readings.forEach((rd, i) => { add(rd.title); add(rd.text); rd.text.split(' ').forEach(w => add(w.replace(/[.,!?—"¡¿]/g, ''))); rd.qs.forEach(q => { add(q[0]); q[1].forEach(add); }); }); for (let n = 1; n <= 4; n++) add(fmt(s.readQ, { n }));

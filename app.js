@@ -43,19 +43,32 @@ const fmt = (s, o) => s.replace(/\{(\w+)\}/g, (m, k) => o[k] != null ? o[k] : m)
 const cls = ['vA', 'vE', 'vI', 'vO', 'vU'];
 const vcolor = v => 'var(--' + v.toLowerCase() + ')';
 const caseIt = s => settings.upper ? s.toUpperCase() : s;
+/* Nombre hablado de una letra ("j" → "jota"): una letra sola la voz la lee mal; vocales y números se dicen tal cual. */
+const letterName = ch => { const l = (T().letters || []).find(x => x[0] === String(ch).toLowerCase()); return l ? l[3] : String(ch); };
 
 /* ---------- audio: speech + sfx ---------- */
 /* Voces grabadas (voces/<lang>/<hash>.mp3). Si existe el archivo de una frase se usa; si no, la voz del teléfono. */
 const Clips = {
   index: { es: null, en: null }, cache: {},
   hash(str) { let x = 5381; for (let i = 0; i < str.length; i++) x = ((x << 5) + x + str.charCodeAt(i)) >>> 0; return x.toString(16).padStart(8, '0'); },
-  load() { fetch('voces/index.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(j => { if (j) { this.index = { es: new Set(j.es || []), en: new Set(j.en || []) }; Diag.log('clips', 'voces: es ' + (j.es || []).length + ', en ' + (j.en || []).length); } }).catch(() => {}); },
+  ready: null,
+  load() { this.ready = fetch('voces/index.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(j => { if (j) { this.index = { es: new Set(j.es || []), en: new Set(j.en || []) }; Diag.log('clips', 'voces: es ' + (j.es || []).length + ', en ' + (j.en || []).length); } }).catch(() => {}); },
+  /* Guarda todas las voces del idioma en el teléfono (la caché del service worker) para que suenen sin internet desde la primera vez. */
+  async downloadAll(lang, onProgress) { const idx = this.index[lang]; if (!idx || !idx.size) return 0; const list = [...idx]; let n = 0;
+    for (let i = 0; i < list.length; i += 8) { await Promise.all(list.slice(i, i + 8).map(h => fetch(`voces/${lang}/${h}.mp3`).then(r => { if (r.ok) n++; }).catch(() => {}))); if (onProgress) onProgress(Math.min(i + 8, list.length), list.length); } return n; },
   file(lang, text) { const t = String(text).trim(); const idx = this.index[lang]; if (!idx || !idx.size) return null; const h = this.hash(lang + '|' + t); return idx.has(h) ? `voces/${lang}/${h}.mp3` : null; },
+  /* Una frase pegada ("¡Hola! ¿Quién juega hoy? Toca tu animal.") se parte en oraciones y se buscan los trozos grabados más largos; si todos existen, se encadenan. */
+  segments(lang, text) { const sents = (String(text).match(/[^.!?]+[.!?]+|[^.!?]+$/g) || []).map(s => s.trim()).filter(Boolean); if (sents.length < 2) return null;
+    const out = []; let i = 0; while (i < sents.length) { let found = null; for (let j = sents.length; j > i; j--) { const f = this.file(lang, sents.slice(i, j).join(' ')); if (f) { found = f; i = j; break; } } if (!found) return null; out.push(found); } return out; },
+  playList(list, opts) { let k = 0; const next = () => { if (k >= list.length) { if (opts.onend) opts.onend(); return; } this.play(list[k++], { rate: opts.rate, onend: () => setTimeout(next, 120), onerror: opts.onerror }); }; next(); },
+  missing: {}, // frases que cayeron a la voz del teléfono (diagnóstico para completar el manifest)
   current: null,
   play(src, opts) { this.stop(); const a = this.cache[src] || (this.cache[src] = new Audio(src)); this.current = a; a.playbackRate = opts.rate && opts.rate < .7 ? .82 : 1; try { a.preservesPitch = true; } catch (e) {}
     let ended = false; const end = () => { if (ended) return; ended = true; if (this.current === a) this.current = null; if (opts.onend) opts.onend(); };
-    a.onended = end; a.onerror = () => { Diag.log('clips', 'error al reproducir ' + src); end(); }; a.currentTime = 0;
-    const pr = a.play(); if (pr && pr.catch) pr.catch(e => { Diag.log('clips', 'play() rechazado: ' + e.message); end(); }); },
+    // Si el mp3 no se puede reproducir (sin internet y aún no guardado), se avisa para que hable la voz del teléfono en vez de quedarse mudo.
+    const fail = why => { Diag.log('clips', why + ' ' + src); if (opts.onerror && !ended) { ended = true; if (this.current === a) this.current = null; delete this.cache[src]; opts.onerror(); } else end(); };
+    a.onended = end; a.onerror = () => fail('error al reproducir'); a.currentTime = 0;
+    const pr = a.play(); if (pr && pr.catch) pr.catch(e => fail('play() rechazado: ' + e.message)); },
   stop() { if (this.current) { try { this.current.onended = null; this.current.pause(); } catch (e) {} this.current = null; } },
 };
 const Voice = {
@@ -84,8 +97,15 @@ const Voice = {
   },
   say(text, opts) {
     opts = opts || {};
-    const clip = Clips.file(T().code, text);
-    if (clip) { try { speechSynthesis.cancel(); } catch (e) {} Clips.play(clip, opts); return; }
+    const clip = Clips.file(T().code, text); const withFallback = Object.assign({}, opts, { onerror: () => this.tts(text, opts) });
+    if (clip) { try { speechSynthesis.cancel(); } catch (e) {} Clips.play(clip, withFallback); return; }
+    const segs = Clips.segments(T().code, text);
+    if (segs) { try { speechSynthesis.cancel(); } catch (e) {} Clips.playList(segs, withFallback); return; }
+    if (Clips.index[T().code] && Clips.index[T().code].size && !Clips.missing[text]) { Clips.missing[text] = 1; Diag.log('sin-voz', text.slice(0, 80)); }
+    this.tts(text, opts);
+  },
+  /* Voz del teléfono: solo cuando no hay audio grabado (o no se pudo reproducir). */
+  tts(text, opts) { opts = opts || {};
     if (!this.supported()) { Diag.log('speech', 'speechSynthesis no soportado'); showBanner(U().noVoice); return; }
     try {
       Clips.stop(); speechSynthesis.cancel();
@@ -453,13 +473,13 @@ function traceScreen(startLetter) { Diag.crumb('traceScreen');
     return { cov: tot ? hit / tot : 0, outside: inkTotal ? outside / inkTotal : 0 }; }
   $('#done').onclick = () => { const r = coverage();
     if (r.cov > .35 && r.outside < .6) { $('#fb').textContent = cheer(); Sfx.good(); confetti(); award(1, 'trace:' + L + (upper ? '' : ':min'));
-      if (upper && !isDigit()) { Voice.seq([cheer(), 700, S().nowLower, 400], () => { upper = false; draw(); Voice.seq([{ t: L, rate: .6 }]); }); }
-      else { const idx = letters.indexOf(L); Voice.seq([cheer(), 700, S().next, 300], () => { L = letters[(idx + 1) % letters.length]; upper = true; draw(); Voice.seq([{ t: L, rate: .6 }]); $$('#lchips .chip').find(b => b.dataset.l === L).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }); } }
+      if (upper && !isDigit()) { Voice.seq([cheer(), 700, S().nowLower, 400], () => { upper = false; draw(); Voice.seq([{ t: letterName(L), rate: .6 }]); }); }
+      else { const idx = letters.indexOf(L); Voice.seq([cheer(), 700, S().next, 300], () => { L = letters[(idx + 1) % letters.length]; upper = true; draw(); Voice.seq([{ t: letterName(L), rate: .6 }]); $$('#lchips .chip').find(b => b.dataset.l === L).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }); } }
     else { $('#fb').textContent = u.bad; Sfx.bad(); miss('trace:' + L); Voice.seq([u.bad, 500, S().trace]); } };
-  $('#clear').onclick = () => { Sfx.tap(); draw(); }; $('#say').onclick = () => Voice.say(L);
+  $('#clear').onclick = () => { Sfx.tap(); draw(); }; $('#say').onclick = () => Voice.say(letterName(L));
   $('#caseU').onclick = () => { upper = true; draw(); }; $('#caseL').onclick = () => { upper = false; draw(); };
-  $$('#lchips .chip').forEach(b => b.onclick = () => { L = b.dataset.l; Sfx.tap(); Voice.seq([{ t: L, rate: .6 }]); draw(); });
-  wire(); draw(); document.fonts && document.fonts.ready.then(draw); Voice.seq([S().trace, 500, { t: L, rate: .6 }]);
+  $$('#lchips .chip').forEach(b => b.onclick = () => { L = b.dataset.l; Sfx.tap(); Voice.seq([{ t: letterName(L), rate: .6 }]); draw(); });
+  wire(); draw(); document.fonts && document.fonts.ready.then(draw); Voice.seq([S().trace, 500, { t: letterName(L), rate: .6 }]);
 }
 
 /* ---------- 8. games ---------- */
@@ -1061,7 +1081,7 @@ function gameWrite(focus, opts) { Diag.crumb('gameWrite'); opts = opts || {};
       if (b.dataset.ch === letters[pos]) { b.disabled = true; slots[pos].textContent = caseIt(letters[pos]); slots[pos].classList.add('full'); pos++; Sfx.tap(); const snd = (t.sounds || {})[b.dataset.ch] || b.dataset.ch;
         if (pos < letters.length) Voice.seq([{ t: snd.split(',')[0], rate: .6 }]);
         else { $$('.slot', sh.area).forEach(x => x.classList.add('good')); if (!bad) { hit('write:' + word); won += 2; } adapt('write', !bad); correct(sh, b, bad ? 0 : 2, () => { r++; round(); }, [{ t: word, rate: .75 }, 300, fmt(s.wroteIt, { w: word }), 300]); } }
-      else { if (!bad) { miss('write:' + word); adapt('write', false); } bad = true; const ok = $$('[data-ch]', sh.area).find(x => !x.disabled && x.dataset.ch === letters[pos]); wrong(sh, b, null, 2, ok ? `[data-i="${ok.dataset.i}"]` : null); Voice.seq([u.bad, 400, fmt(s.nextLetter, { l: letters[pos] })]); } }); }
+      else { if (!bad) { miss('write:' + word); adapt('write', false); } bad = true; const ok = $$('[data-ch]', sh.area).find(x => !x.disabled && x.dataset.ch === letters[pos]); wrong(sh, b, null, 2, ok ? `[data-i="${ok.dataset.i}"]` : null); Voice.seq([u.bad, 400, fmt(s.nextLetter, { l: letterName(letters[pos]) })]); } }); }
   $('#guideText').textContent = s.gWrite; round();
 }
 /* ---------- Mi cuerpo y el clima ---------- */
@@ -1205,7 +1225,7 @@ function parentsPanel() { Diag.crumb('parentsPanel');
       <div class="setting"><label for="rate">${esc(u.speed)}: <span id="rateV">${settings.rate}</span></label><input type="range" id="rate" min="0.5" max="1.2" step="0.05" value="${settings.rate}"></div>
       <div class="setting"><label>${esc(u.letterCase)}</label><div class="row"><button class="chip ${settings.upper ? 'on' : ''}" id="cU" type="button">ABC</button><button class="chip ${settings.upper ? '' : 'on'}" id="cL" type="button">abc</button></div></div>
       <div class="setting"><label>${esc(u.sfx)}</label><div class="row"><button class="chip ${settings.sfx ? 'on' : ''}" id="sfxOn" type="button">🔔 On</button><button class="chip ${settings.sfx ? '' : 'on'}" id="sfxOff" type="button">🔕 Off</button></div></div>
-      <div class="row"><button class="btn alt" id="testVoice" type="button">🔊 ${esc(u.listen)}</button><button class="btn alt" id="install" type="button" hidden>📲 ${esc(u.install)}</button></div></div>
+      <div class="row"><button class="btn alt" id="testVoice" type="button">🔊 ${esc(u.listen)}</button><button class="btn alt" id="dlVoices" type="button">⬇️ ${esc(u.downloadVoices)}</button><button class="btn alt" id="install" type="button" hidden>📲 ${esc(u.install)}</button></div><small id="dlInfo" style="color:var(--muted)"></small></div>
     <div class="card"><h3>${esc(u.profiles)}</h3><div class="row" style="justify-content:flex-start"><button class="btn alt" id="switch" type="button">👥 ${esc(u.profiles)}</button><button class="btn alt" id="reset" type="button">🧹 ${esc(fmt(u.reset, { name: P.name }))}</button><button class="btn" style="background:var(--bad)" id="resetAll" type="button">${esc(u.resetAll)}</button></div>
       <small style="color:var(--muted)">${esc(u.about)}</small></div>
     <div class="card"><h3>🛠 ${esc(u.diagT)}</h3><small style="color:var(--muted)">${esc(u.diagHelp)}</small>
@@ -1223,6 +1243,7 @@ function parentsPanel() { Diag.crumb('parentsPanel');
   $('#cU').onclick = () => { settings.upper = true; saveSettings(); parentsPanel(); }; $('#cL').onclick = () => { settings.upper = false; saveSettings(); parentsPanel(); };
   $('#sfxOn').onclick = () => { settings.sfx = true; saveSettings(); Sfx.good(); parentsPanel(); }; $('#sfxOff').onclick = () => { settings.sfx = false; saveSettings(); parentsPanel(); };
   $('#testVoice').onclick = () => Voice.say(t.phrases[1][0]);
+  $('#dlVoices').onclick = async () => { const b = $('#dlVoices'), info = $('#dlInfo'); b.disabled = true; const n = await Clips.downloadAll(L, (i, tot) => { info.textContent = i + ' / ' + tot; }); info.textContent = n ? '✓ ' + n : u.noVoiceFiles; b.disabled = false; };
   $('#switch').onclick = profileScreen;
   let confirmReset = 0; $('#reset').onclick = () => { if (++confirmReset < 2) { toast('⚠️ ' + fmt(u.reset, { name: P.name }) + '?'); return; } P.stars = 0; P.done = {}; P.badges = {}; P.games = 0; saveProfiles(); setHeader(); parentsPanel(); };
   let confirmAll = 0; $('#resetAll').onclick = () => { if (++confirmAll < 2) { toast('⚠️ ' + u.resetAll + '?'); return; } profiles = []; P = null; store.del('profiles'); store.del('current'); setHeader(); profileScreen(); };
@@ -1255,7 +1276,8 @@ function practice(key) { const [kind, id] = key.split(/:(.+)/); const t = T(); V
 
 /* Pantalla de bienvenida: el primer toque desbloquea el audio del teléfono; después la paloma saluda. */
 function showGate(then) { const g = $('#startGate'); if (!g) { then(); return; } g.hidden = false; $('#startName').textContent = P ? P.name : ''; $('#startText').textContent = U().tapStart;
-  g.onclick = () => { g.hidden = true; Sfx.ctx(); Sfx.sparkle(1); setTimeout(then, 250); }; }
+  // Antes de hablar, esperar (máx. 1,5 s) a que cargue el índice de voces: si no, el saludo saldría con la voz del teléfono.
+  g.onclick = () => { g.hidden = true; Sfx.ctx(); Sfx.sparkle(1); Promise.race([Clips.ready || Promise.resolve(), new Promise(r => setTimeout(r, 1500))]).then(() => setTimeout(then, 200)); }; }
 /* ---------- boot ---------- */
 let deferredInstall = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
