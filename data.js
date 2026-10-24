@@ -29,6 +29,7 @@ window.LYA_DATA = {
       weakT: 'Dónde falla más', noWeak: 'Todavía no hay fallos registrados. Cuando el niño juegue, aquí verás en qué se equivoca y podrás repetir solo eso.', errorsW: 'fallos', failRate: 'de error', practice: 'Practicar',
       numbers: ['uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte'],
       about: 'Leo y Aprendo es gratis, sin anuncios y funciona sin internet.',
+      sfxCredits: 'Sonidos de animales', sfxCreditsHelp: 'Grabaciones reales con licencia libre (Wikimedia Commons). Autores:',
       say: {
         home: 'Toca un dibujo para jugar.', vowels: 'Vamos a aprender las vocales.', thisIs: 'Esta es la {L}.', ofWord: '{L} de {w}.', tapIt: 'Toca la {L}.',
         letters: 'Toca una letra para escuchar su sonido.', letterIs: 'Esta es la letra {name}.', syl: 'Toca una letra, y después una sílaba.', words: 'Toca un dibujo para escuchar la palabra.',
@@ -165,6 +166,7 @@ window.LYA_DATA = {
       weakT: 'Where they struggle most', noWeak: 'No mistakes recorded yet. Once the child plays, you will see here what they get wrong and can practice just that.', errorsW: 'misses', failRate: 'error rate', practice: 'Practice',
       numbers: ['one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen','twenty'],
       about: 'Leo y Aprendo is free, has no ads and works offline.',
+      sfxCredits: 'Animal sounds', sfxCreditsHelp: 'Real recordings under free licenses (Wikimedia Commons). Authors:',
       say: {
         home: 'Tap a picture to play.', vowels: "Let's learn the vowels.", thisIs: 'This is the letter {L}.', ofWord: '{L} is for {w}.', tapIt: 'Tap the {L}.',
         letters: 'Tap a letter to hear its sound.', letterIs: 'This is the letter {name}.', syl: 'Tap a word. Then tap each sound and blend them into the word.', words: 'Tap a picture to hear the word.',

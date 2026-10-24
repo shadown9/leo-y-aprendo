@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v44';
+const APP_VERSION = 'v45';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -1018,8 +1018,8 @@ function plantSvg(size) { size = size || 140; return `<svg viewBox="0 0 120 160"
   <g class="pp" data-p="1"><path d="M60 120V46" stroke="#3fa34d" stroke-width="8" stroke-linecap="round"/></g>
   <g class="pp" data-p="2" fill="#4cc25c"><path d="M60 98c-24 2-36-10-38-26 18-2 32 8 38 26z"/><path d="M60 78c24 2 36-10 38-26-18-2-32 8-38 26z"/></g>
   <g class="pp" data-p="3"><circle cx="60" cy="42" r="23" fill="#ff7ac8"/><circle cx="60" cy="42" r="9" fill="#ffd000"/></g></svg>`; }
-function animalSound(a, then) { // sonido real si está; si no, la voz hace la onomatopeya
-  if (Sfxfile.has(animalKey(a))) { Voice.stop(); Sfxfile.play(animalKey(a), then); } else Voice.seq([{ t: a[2], rate: .8 }], then); }
+function animalSound(a, then) { // SOLO grabación real del animal; la voz nunca imita (orden del Jefe). Si falta, se anota y se sigue.
+  if (Sfxfile.has(animalKey(a))) { Voice.stop(); Sfxfile.play(animalKey(a), then); } else { Diag.log('sin-sonido', animalKey(a)); if (then) then(); } }
 function scienceScreen() { Diag.crumb('scienceScreen');
   const t = T(), u = U(), s = S(), L = settings.lang;
   main.innerHTML = `<section class="screen">${topbar(u.sciT)}${guideHtml(s.science)}
@@ -1389,6 +1389,7 @@ function parentsPanel() { Diag.crumb('parentsPanel');
       <div class="row"><button class="btn alt" id="testVoice" type="button">🔊 ${esc(u.listen)}</button><button class="btn alt" id="dlVoices" type="button">⬇️ ${esc(u.downloadVoices)}</button><button class="btn alt" id="install" type="button" hidden>📲 ${esc(u.install)}</button></div><small id="dlInfo" style="color:var(--muted)"></small></div>
     <div class="card"><h3>${esc(u.profiles)}</h3><div class="row" style="justify-content:flex-start"><button class="btn alt" id="switch" type="button">👥 ${esc(u.profiles)}</button><button class="btn alt" id="reset" type="button">🧹 ${esc(fmt(u.reset, { name: P.name }))}</button><button class="btn" style="background:var(--bad)" id="resetAll" type="button">${esc(u.resetAll)}</button></div>
       <small style="color:var(--muted)">${esc(u.about)}</small></div>
+    <div class="card"><h3>🐾 ${esc(u.sfxCredits)}</h3><small style="color:var(--muted)">${esc(u.sfxCreditsHelp)}</small><div id="sfxCred" style="font-size:.8rem;line-height:1.5;user-select:text;-webkit-user-select:text"></div></div>
     <div class="card"><h3>🛠 ${esc(u.diagT)}</h3><small style="color:var(--muted)">${esc(u.diagHelp)}</small>
       <div class="row" style="justify-content:flex-start;align-items:center"><span style="font-family:var(--display);font-size:1.1rem">${APP_VERSION}</span><button class="btn alt" id="updBtn" type="button">🔄 ${esc(u.update)}</button></div>
       <div class="row" style="justify-content:flex-start"><button class="btn alt" id="diagCopy" type="button">📋 ${esc(u.copy)}</button><button class="btn alt" id="diagShow" type="button">👁 ${esc(u.show)}</button><button class="btn alt" id="diagClear" type="button">🧹 ${esc(u.clear)}</button></div>
@@ -1396,6 +1397,8 @@ function parentsPanel() { Diag.crumb('parentsPanel');
   </section>`;
   $('#diagShow').onclick = () => { const o = $('#diagOut'); o.textContent = Diag.report(); o.hidden = !o.hidden; };
   $('#diagClear').onclick = () => { Diag.clear(); $('#diagOut').textContent = ''; toast('🧹'); };
+  fetch('sonidos/creditos.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).then(j => { const box = $('#sfxCred'); if (!box) return;
+    box.innerHTML = Object.entries(j).map(([k, c]) => `<div>${esc(k)}: <a href="${esc(c.page)}" target="_blank" rel="noopener">${esc(c.title.replace(/^File:/, ''))}</a> · ${esc(c.author || '')} · ${esc(c.license || '')}</div>`).join(''); }).catch(() => {});
   $('#updBtn').onclick = () => { Sfx.tap(); toast('🔄 …'); const go = () => { if ('caches' in window) caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('lya-v')).map(k => caches.delete(k)))).finally(() => location.reload(true)); else location.reload(true); };
     if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(reg => reg ? reg.update().then(go, go) : go()).catch(go); else go(); };
   $('#diagCopy').onclick = () => { const txt = Diag.report(); const fallback = () => { const o = $('#diagOut'); o.textContent = txt; o.hidden = false; const r = document.createRange(); r.selectNodeContents(o); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast(u.copyManual); };
