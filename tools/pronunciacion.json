@@ -7,5 +7,25 @@
   "¡Ya me lo sé, de la A a la Z!": "¡Ya me lo sé, de la a a la zeta!",
   "Hay lluvia. ¿Qué te pones? Toca la ropa.": "Llueve. ¿Qué te pones? Toca la ropa."
  },
- "en": {}
+ "en": {
+  "a, a, apple": "ah, ah, apple",
+  "e, e, egg": "eh, eh, egg",
+  "i, i, igloo": "ih, ih, igloo",
+  "o, o, octopus": "ah, ah, octopus",
+  "u, u, up": "uh, uh, up",
+  "b, b, ball": "buh, buh, ball",
+  "k, k, cat": "kuh, kuh, cat",
+  "d, d, dog": "duh, duh, dog",
+  "g, g, goat": "guh, guh, goat",
+  "h, h, hat": "huh, huh, hat",
+  "j, j, jam": "juh, juh, jam",
+  "k, k, kite": "kuh, kuh, kite",
+  "p, p, pig": "puh, puh, pig",
+  "kw, kw, queen": "kwuh, kwuh, queen",
+  "t, t, tiger": "tuh, tuh, tiger",
+  "w, w, whale": "wuh, wuh, whale",
+  "ks, ks, fox": "kss, kss, fox",
+  "y, y, yarn": "yuh, yuh, yarn",
+  "ch, ch, chick": "chuh, chuh, chick"
+ }
 }

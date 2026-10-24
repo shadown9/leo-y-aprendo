@@ -49,6 +49,7 @@ def letter_parts(text):
     return parts if len(parts) >= 2 and all(len(p) <= 7 and ' ' not in p or p == 'doble u' for p in parts) else None
 n = 0
 for text, hsh in m.items():
+    if text in (VC.PRON.get(args.lang) or {}): continue  # tiene escritura fonética propia: se graba entera, no se compone
     parts = letter_parts(text)
     if not parts: continue
     dest = os.path.join(ROOT, 'voces', args.lang, hsh + '.mp3')
