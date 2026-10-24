@@ -184,7 +184,11 @@ select{font:inherit;padding:10px 12px;border-radius:14px;border:3px solid var(--
 .grid.cubes .tile{min-height:var(--h,140px);background:var(--cube,var(--o));color:#fff;font-size:clamp(3rem,16vw,5.2rem);border-radius:28px;box-shadow:0 8px 0 rgba(0,0,0,.18);animation:cubein .35s both;text-shadow:0 3px 0 rgba(0,0,0,.15)}
 .grid.cubes .tile .pic{font-size:clamp(3rem,15vw,4.6rem)}
 .grid.cubes .tile .lbl{color:#fff;font-size:1.2rem}
-.grid.cubes .tile.good{background:var(--good)}
+/* La correcta no puede confundirse con ningún cubo: verde propio (ningún cubo lo usa), marco blanco y ✓; las demás se apagan. */
+.grid.cubes .tile.good{background:#22c55e}
+.answered .tile.good{box-shadow:0 0 0 7px #fff,0 8px 0 rgba(0,0,0,.18)!important;z-index:1;transform:scale(1.03)}
+.answered .tile.good::before{content:'✓';position:absolute;top:6px;left:12px;font-size:1.7rem;line-height:1;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.answered .tile:not(.good){opacity:.35;filter:saturate(.2);transition:opacity .25s}
 .grid.cubes .tile.bad{filter:brightness(.8)}
 .grid.cubes .tile.vA,.grid.cubes .tile.vE,.grid.cubes .tile.vI,.grid.cubes .tile.vO,.grid.cubes .tile.vU{color:#fff}
 .grid.cubes .tile:active{transform:translateY(6px);box-shadow:none}

@@ -16,7 +16,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lya:' + k); } catch (e) {} },
 };
 /* ---------- Diag: registro interno de errores (nunca visible para el niño) ---------- */
-const APP_VERSION = 'v30';
+const APP_VERSION = 'v31';
 const Diag = {
   max: 300, crumbs: [],
   log(type, msg, extra) { try { const list = store.get('diag', []); list.push({ t: new Date().toISOString(), type, msg: String(msg).slice(0, 300), screen: this.crumbs[this.crumbs.length - 1] || '', crumbs: this.crumbs.slice(-6).join(' > '), extra: extra ? JSON.stringify(extra).slice(0, 300) : undefined }); while (list.length > this.max) list.shift(); store.set('diag', list); } catch (e) {} },
@@ -64,12 +64,14 @@ const Clips = {
   missing: {}, // frases que cayeron a la voz del teléfono (diagnóstico para completar el manifest)
   current: null,
   play(src, opts) { this.stop(); const a = this.cache[src] || (this.cache[src] = new Audio(src)); this.current = a; a.playbackRate = opts.rate && opts.rate < .7 ? .82 : 1; try { a.preservesPitch = true; } catch (e) {}
-    let ended = false; const end = () => { if (ended) return; ended = true; if (this.current === a) this.current = null; if (opts.onend) opts.onend(); };
+    // Cada reproducción lleva su ficha: si otra la interrumpe (stop o el mismo clip otra vez), sus avisos tardíos ("interrupted by pause") se ignoran y no disparan la voz del teléfono.
+    const tk = {}; a._tk = tk; const live = () => a._tk === tk;
+    let ended = false; const end = () => { if (ended || !live()) return; ended = true; if (this.current === a) this.current = null; if (opts.onend) opts.onend(); };
     // Si el mp3 no se puede reproducir (sin internet y aún no guardado), se avisa para que hable la voz del teléfono en vez de quedarse mudo.
-    const fail = why => { Diag.log('clips', why + ' ' + src); if (opts.onerror && !ended) { ended = true; if (this.current === a) this.current = null; delete this.cache[src]; opts.onerror(); } else end(); };
+    const fail = why => { if (!live()) return; Diag.log('clips', why + ' ' + src); if (opts.onerror && !ended) { ended = true; if (this.current === a) this.current = null; delete this.cache[src]; opts.onerror(); } else end(); };
     a.onended = end; a.onerror = () => fail('error al reproducir'); a.currentTime = 0;
     const pr = a.play(); if (pr && pr.catch) pr.catch(e => fail('play() rechazado: ' + e.message)); },
-  stop() { if (this.current) { try { this.current.onended = null; this.current.pause(); } catch (e) {} this.current = null; } },
+  stop() { if (this.current) { try { this.current._tk = null; this.current.onended = null; this.current.pause(); } catch (e) {} this.current = null; } },
 };
 const Voice = {
   voices: [], unlocked: false, warned: false,
@@ -430,7 +432,7 @@ function storyScreen(k) { Diag.crumb('story:' + k);
     $('#stage').innerHTML = `<div class="sub">${esc(u.question)} ${qs.length > 1 ? (qi + 1) + '/' + qs.length : ''}</div><div class="word" style="font-size:1.5rem;letter-spacing:0">${esc(q[0])}</div>
       <div class="grid" style="width:100%">${shuffle(opts).map(o => `<button class="tile" type="button" data-i="${o[1]}"><span class="pic">${o[0][1]}</span><span class="lbl">${esc(o[0][0])}</span></button>`).join('')}</div>`;
     bigOpts($('#stage'), '.grid'); Voice.seq([q[0], 900, q[0]]); $('#next').textContent = last ? '🏠' : '➡️'; $('#next').onclick = () => { if (last) home(); else { qi++; quiz(); } };
-    $$('[data-i]', main).forEach(b => b.onclick = () => { if (+b.dataset.i === q[2]) { b.classList.add('good'); Sfx.good(); hit('story:' + k); confetti(); $('#stage').style.pointerEvents = 'none';
+    $$('[data-i]', main).forEach(b => b.onclick = () => { if (+b.dataset.i === q[2]) { markGood(b); Sfx.good(); hit('story:' + k); confetti(); $('#stage').style.pointerEvents = 'none';
         if (last) { $('#fb').textContent = u.theEnd; award(3, 'story:' + L + ':' + k); Voice.seq([cheer(), 500, u.theEnd]); }
         else { award(1); Voice.seq([cheer(), 600], () => { if (document.contains($('#stage'))) { $('#stage').style.pointerEvents = ''; qi++; quiz(); } }); } }
       else { b.classList.add('bad'); Sfx.bad(); miss('story:' + k); $('#fb').textContent = u.bad; setTimeout(() => b.classList.remove('bad'), 400); const ok = $$('[data-i]', main).find(x => +x.dataset.i === q[2]); Voice.seq([u.bad, 600, q[0]]); setTimeout(() => ok.classList.add('pulse'), 1500); } }); }
@@ -529,7 +531,9 @@ function bigOpts(area, sel, forceCols) { const g = area.querySelector(sel || '.g
   g.classList.add('cubes'); const cols = forceCols || (n <= 3 ? 1 : n <= 8 ? 2 : 3); const rows = Math.ceil(n / cols); g.style.setProperty('--cols', cols);
   const top = g.getBoundingClientRect().top; const avail = Math.max(0, window.innerHeight - top - 70); const h = Math.max(104, Math.min(240, avail / rows - 14)); g.style.setProperty('--h', h + 'px');
   tiles.forEach((t, i) => { const v = (t.className.match(/\bv([AEIOU])\b/) || [])[1]; if (!t.classList.contains('keep')) t.style.setProperty('--cube', v ? 'var(--' + v.toLowerCase() + ')' : CUBE_COLORS[i % CUBE_COLORS.length]); t.style.animationDelay = (i * .07) + 's'; }); }
-function correct(sh, b, n, after, parts) { b.classList.add('good'); Sfx.good(); const c = cheer(); sh.fb.textContent = c; if (n) award(n, null, true); confetti();
+/* Marca la respuesta correcta de forma inconfundible: verde propio, marco blanco, ✓ y las otras opciones atenuadas. */
+function markGood(b) { b.classList.add('good'); const g = b.closest('.grid, .memo, .pieces'); if (g) g.classList.add('answered'); }
+function correct(sh, b, n, after, parts) { markGood(b); Sfx.good(); const c = cheer(); sh.fb.textContent = c; if (n) award(n, null, true); confetti();
   // Avanza cuando la voz TERMINA de felicitar, nunca por reloj (si no, la ronda siguiente corta la frase).
   armWatchdog('correct'); sh.area.style.pointerEvents = 'none'; // un toque extra no debe cancelar la felicitación ni trabar la ronda
   Voice.seq((parts || []).concat([c, 500]), () => { sh.area.style.pointerEvents = ''; if (document.contains(sh.area)) after(); }); }
@@ -546,7 +550,9 @@ function firstSeen(key) { if (!P) return; P.seen = P.seen || {}; if (!P.seen[key
 /* Cierre de un juego: si forma parte del Juego del día, pasa al siguiente segmento; si no, pantalla final con globos. */
 function done(sh, won, replay, opts) { if (opts && opts.next) { clearTimeout(roundWatch); opts.next(won); } else finish(sh, won, replay); }
 function gameShell(title, opts, def) { const n = (opts && opts.rounds) || def; const sh = roundShell(title, n); if (opts && opts.part) { const p = $('#guideText'); if (p) p.textContent = title; } return sh; }
-function askOnce(opts, r, intro, hear) { if (r === 0 && !(opts && opts.quiet)) Voice.seq([intro, 600], hear); else setTimeout(hear, 300); }
+/* La pregunta de la ronda se dice tras una pausa; si el niño ya acertó (área bloqueada por correct()), no se dice: cortaría la felicitación y la ronda quedaría trabada. */
+function areaFree() { const a = main.querySelector('#area'); return !a || a.style.pointerEvents !== 'none'; }
+function askOnce(opts, r, intro, hear) { const safe = () => { if (areaFree()) hear(); }; if (r === 0 && !(opts && opts.quiet)) Voice.seq([intro, 600], safe); else setTimeout(safe, 300); }
 
 function gameVowel(focus, opts) { Diag.crumb('gameVowel'); opts = opts || {};
   const t = T(), u = U(); const sh = gameShell(u.games[0][0], opts, 6); let r = 0, won = 0; const L = level('vowel');
@@ -1155,7 +1161,7 @@ function gameRead(focus, opts) { Diag.crumb('gameRead'); opts = opts || {};
     sh.bar.style.width = (r / rd.qs.length * 100) + '%'; const q = rd.qs[r]; let tries = 0; const optsQ = shuffle(q[1].map((o, i) => [o, i]));
     sh.area.innerHTML = `<div class="stage"><div class="sub">${esc(fmt(s.readQ, { n: r + 1 }))}</div><div class="word" style="font-size:1.4rem;letter-spacing:0">${esc(q[0])}</div><button class="btn icon" id="hear" type="button">🔊</button></div>
       <div class="grid">${optsQ.map(o => `<button class="tile" type="button" data-i="${o[1]}" style="font-size:1.25rem;padding:10px">${esc(o[0])}</button>`).join('')}</div>`;
-    bigOpts(sh.area); const hear = () => Voice.seq([q[0]].concat(optsQ.flatMap(o => [400, { t: o[0], rate: .85 }]))); $('#hear').onclick = hear; setTimeout(hear, 200);
+    bigOpts(sh.area); const hear = () => Voice.seq([q[0]].concat(optsQ.flatMap(o => [400, { t: o[0], rate: .85 }]))); $('#hear').onclick = hear; setTimeout(() => { if (areaFree()) hear(); }, 200);
     $$('[data-i]', sh.area).forEach(b => b.onclick = () => { if (+b.dataset.i === q[2]) { if (tries === 0) hit('read:' + idx); adapt('read', tries === 0); correct(sh, b, tries === 0 ? 1 : 0, () => { r++; question(); }, [{ t: q[1][q[2]], rate: .85 }, 300]); if (tries === 0) won++; } else { tries++; miss('read:' + idx); if (tries === 1) adapt('read', false); wrong(sh, b, hear, tries, `[data-i="${q[2]}"]`); } }); }
   $('#guideText').textContent = s.read;
 }
