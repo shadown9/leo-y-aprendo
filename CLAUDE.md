@@ -128,3 +128,5 @@ Detalles pedagógicos que no hay que deshacer: en "¿Cuál es distinta?" el soni
 
 ## 10. Feedback ya aplicado de Eli / Junior (no deshacer)
 Piezas mezcladas + pieza extra · estrellas que se ven y se tocan · nombre y sonido de cada letra (Z/C en latino) · trazar auto mayúscula→minúscula→siguiente · voz alegre y más aguda · felicitación completa sin cortes · botón atrás no cierra · cubos grandes · 28 animales y guía hablada al crear perfil · recarga vuelve a la misma pantalla · puertas en color · r suave con punto medio · Trazar sin ✅, sin pintar fuera y con paleta (video de la niña de Junior, 2026-10-24).
+
+- **Canciones (v44):** hay un reproductor único `Song` (app.js, junto a `Voice`). `Voice.stop()` apaga voz Y canción; `Voice.hush()` apaga solo la voz (lo usa la propia canción al arrancar). Toda canción nueva se registra con `Song.set(audio, onstop)`; al elegir otra o salir de la pantalla la anterior se apaga sola. Nunca crear un `Audio` de canción fuera de `Song`.
